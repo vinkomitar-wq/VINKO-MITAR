@@ -28,6 +28,7 @@ import {
   Map as MapIcon,
   Ship,
   Star,
+  HardDrive,
 } from "lucide-react";
 import {
   collection,
@@ -69,6 +70,7 @@ import AdminAIAssistant from "./AdminAIAssistant";
 import { VesselTrackingMap } from "./VesselTrackingMap";
 import AdminCommissions from "./AdminCommissions";
 import AdminFeedback from "./AdminFeedback";
+import { AdminDatabaseBackups } from "./AdminDatabaseBackups";
 import AdminBookedChartersTab from "./AdminBookedChartersTab";
 import AddAgentManager from "./AddAgentManager";
 import { useMaintenanceMode } from "../useMaintenanceMode";
@@ -123,6 +125,7 @@ export default function AdminPortal() {
     | "feedback"
     | "alerts"
     | "booked"
+    | "backups"
   >("dashboard");
 
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
@@ -177,6 +180,7 @@ export default function AdminPortal() {
     map: { en: "Map Tracking", hr: "Praćenje Mape" },
     commissions: { en: "Commissions", hr: "Zarada" },
     feedback: { en: "Guest Feedback", hr: "Recenzije" },
+    backups: { en: "Database Backups", hr: "Sigurnosne Kopije" },
   };
   const isAdmin = currentAgent?.isAdmin === true;
 
@@ -1516,6 +1520,12 @@ export default function AdminPortal() {
                           icon: Bell,
                           title: t(tabNames.alerts.en, tabNames.alerts.hr),
                           desc: "System errors & notifications",
+                        },
+                        {
+                          id: "backups",
+                          icon: HardDrive,
+                          title: t(tabNames.backups.en, tabNames.backups.hr),
+                          desc: "Daily database archives to Google Drive",
                         },
                         {
                           id: "map",
@@ -3931,6 +3941,12 @@ export default function AdminPortal() {
                     {activeTab === "feedback" && (
                       <div className="bg-white border text-left border-slate-200 rounded-xs shadow-sm p-0 md:p-5">
                         <AdminFeedback />
+                      </div>
+                    )}
+
+                    {activeTab === "backups" && (
+                      <div className="bg-white border text-left border-slate-200 rounded-lg shadow-sm p-4 md:p-6">
+                        <AdminDatabaseBackups />
                       </div>
                     )}
                   </div>

@@ -47,7 +47,7 @@ export const VesselTrackingMap: React.FC<VesselTrackingMapProps> = ({
 
       setLogs(fetched);
       setLoading(false);
-    });
+    }, (err) => console.log('VesselTrackingMap snapshot err', err.message));
 
     return () => unsub();
   }, [vesselId, limitPoints]);

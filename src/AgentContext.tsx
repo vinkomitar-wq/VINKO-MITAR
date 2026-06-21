@@ -277,26 +277,13 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({
                   ];
                 }
                 
-                // Silence duplicate documents in both local list and Firestore by setting isActive: false
-                try {
-                  const dupRef = doc(db, "agents", other.id);
-                  setDoc(dupRef, { isActive: false }, { merge: true }).then(() => {
-                    console.log(`Deactivated duplicate agent document: ${other.id}`);
-                  });
-                } catch (err) {
-                  console.warn(`Failed to deactivate duplicate doc ${other.id}:`, err);
-                }
+                // NE diramo Firestore automatski. Dedup je SAMO u memoriji (za prikaz).
+                // Čišćenje duplikata radi se ručno, nikad auto na svako učitavanje.
               }
             });
 
-            // Write merged consolidated data to preferred document reference
-            try {
-              const primRef = doc(db, "agents", preferredId);
-              primaryAgent.id = preferredId;
-              setDoc(primRef, primaryAgent, { merge: true });
-            } catch (err) {
-              console.warn(`Failed to write consolidated agent ${preferredId}:`, err);
-            }
+            // Samo u memoriji — bez upisa u Firestore.
+            primaryAgent.id = preferredId;
 
             cleanedAgents.push(primaryAgent);
           } else {
@@ -602,6 +589,50 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({
       );
     });
 
+    // ============ SIGURNI PUT: Firebase Auth prvo ============
+    // Prijelazno: ako Auth ne uspije (nemigriran agent), pada na staru
+    // plaintext provjeru nize. Kad svi budu migrirani -> makni fallback.
+    const loginEmail =
+      candidates[0]?.email || (cleanInput.includes("@") ? cleanInput : "");
+    if (loginEmail) {
+      try {
+        await signInWithEmailAndPassword(auth, loginEmail, password);
+        const agentId = loginEmail.toLowerCase().replace(/[^a-z0-9]/g, "_");
+        let authAgent: Agent | undefined =
+          candidates.find(
+            (c) => (c.email || "").toLowerCase() === loginEmail.toLowerCase(),
+          ) ||
+          agents.find(
+            (a) => (a.email || "").toLowerCase() === loginEmail.toLowerCase(),
+          );
+        if (!authAgent) {
+          try {
+            const snap = await getDoc(doc(db, "agents", agentId));
+            if (snap.exists())
+              authAgent = { ...(snap.data() as Agent), id: snap.id };
+          } catch (_) {}
+        }
+        if (authAgent && authAgent.isActive !== false) {
+          setCurrentAgent(authAgent);
+          setIsReferred(false);
+          localStorage.removeItem("charter_agent_referred");
+          localStorage.removeItem("phuket_just_scanned_referral");
+          localStorage.removeItem("phuket_charter_active_chat_id");
+          localStorage.setItem(
+            "charter_active_agent",
+            JSON.stringify(authAgent),
+          );
+          return {
+            success: true,
+            message: `Welcome back, Representative ${authAgent.name || ""}!`,
+          };
+        }
+      } catch (_authErr) {
+        // Auth neuspjesan -> nastavi na staru provjeru (fallback)
+      }
+    }
+    // ========================================================
+
     let found = candidates.find((c) => c.password === password);
     if (!found && candidates.length > 0) {
       found = candidates[0]; // fallback so password mismatch is reported on the primary account
@@ -722,7 +753,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     try {
-      await setDoc(doc(db, "agents", agentId), compiledAgent);
+      await setDoc(doc(db, "agents", agentId), compiledAgent, { merge: true });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `agents/${agentId}`);
       return {
@@ -771,9 +802,12 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({
     setCurrentAgent(modified);
     localStorage.setItem("charter_active_agent", JSON.stringify(modified));
 
-    const agentId =
-      currentAgent.id ||
-      (currentAgent.email || "").toLowerCase().replace(/[^a-z0-9]/g, "_");
+    // UVIJEK kanonski ID iz e-maila — currentAgent.id zna biti UID
+    // pa upis ode u krivi dokument i izmjena "nestane".
+    const agentId = (currentAgent.email || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]/g, "_");
 
     try {
       await setDoc(doc(db, "agents", agentId), updatedFields, { merge: true });

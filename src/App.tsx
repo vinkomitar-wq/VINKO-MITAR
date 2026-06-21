@@ -1215,9 +1215,16 @@ export default function App() {
       if (user) {
         // Robust Role Validation: Check if the user is a Captain or Agent *before* treating as Customer
         try {
+          // Agenti su keyirani po e-mailu (ne uid) — traži po email-ID-u
+          const agentEmailId = (user.email || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "_");
           const [captainDoc, agentDoc] = await Promise.all([
             getDoc(doc(db, "captains", user.uid)),
-            getDoc(doc(db, "agents", user.uid)), // Assuming agents collection exist based on requirements
+            agentEmailId
+              ? getDoc(doc(db, "agents", agentEmailId))
+              : Promise.resolve({ exists: () => false } as any),
           ]);
 
           if (captainDoc.exists() || agentDoc.exists()) {

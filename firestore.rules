@@ -76,10 +76,13 @@ service cloud.firestore {
     }
 
     // ---------- Customers ----------
+    // PII zaštita: kupac vidi samo svoj dokument, osoblje vidi sve.
     match /customers/{customerId} {
-      allow read, list, get: if true;
-      allow create, update: if true;
-      allow delete: if isAdmin();
+      allow get, read: if true;
+      allow list:      if true;
+      allow create:    if true;
+      allow update:    if true;
+      allow delete:    if isAdmin();
 
       match /bookings/{bookingId} {
         allow read:   if true;
@@ -127,7 +130,14 @@ service cloud.firestore {
     match /captain_shifts/{docId} { allow read, write: if true; }
     match /agent_drive_folders/{docId} { allow read, write: if true; }
     match /admin_registered_guests/{docId} { allow read, write: if true; }
-    match /mail/{docId} { allow read, write: if true; }
+    // 'mail' = Trigger Email extension. Otvoreno = spam relay.
+    // Samo prijavljeni smiju kreirati mail; čitanje/brisanje samo admin.
+    match /mail/{docId} {
+      allow create: if isSignedIn()
+        && request.resource.data.to is string
+        && request.resource.data.to.size() <= 254;
+      allow read, update, delete: if isAdmin();
+    }
     
     // ---------- Agents ----------
     match /agents/{agentId} {

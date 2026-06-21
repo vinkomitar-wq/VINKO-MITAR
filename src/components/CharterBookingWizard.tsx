@@ -1219,7 +1219,6 @@ export default function CharterBookingWizard({
                       }
                       alt={ship.name}
                       className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-                      crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
                     />
                     {selectedShip === ship.id && (

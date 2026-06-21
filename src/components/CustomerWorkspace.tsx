@@ -523,7 +523,7 @@ export default function CustomerWorkspace() {
                           }
                           alt={ship.name}
                           className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-                          crossOrigin="anonymous"
+                          referrerPolicy="no-referrer"
                         />
                         {selectedShip === ship.id && (
                           <div className="absolute top-2 right-2 bg-[#00a2b8] text-white p-1 rounded-full shadow-lg">
@@ -740,7 +740,7 @@ export default function CustomerWorkspace() {
                               src={dest.imageUrl}
                               alt={dest.name}
                               className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isSelected ? "opacity-50" : "opacity-30"}`}
-                              crossOrigin="anonymous"
+                              referrerPolicy="no-referrer"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-[#061219]/90 to-transparent"></div>
                             <span
@@ -825,7 +825,7 @@ export default function CustomerWorkspace() {
                               src={addonUrl}
                               alt={addon}
                               className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isSelected ? "opacity-50" : "opacity-30"}`}
-                              crossOrigin="anonymous"
+                              referrerPolicy="no-referrer"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-[#061219]/90 to-[#061219]/20"></div>
                             <span

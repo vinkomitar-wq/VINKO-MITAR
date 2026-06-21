@@ -1,7 +1,3 @@
-export function getPublicUrl(): string {
-  let origin = window.location.origin;
-  if (origin.includes("ais-dev-")) {
-    return origin.replace("ais-dev-", "ais-pre-");
-  }
-  return origin;
-}
+export const getPublicUrl = () => {
+    return window.location.origin;
+};

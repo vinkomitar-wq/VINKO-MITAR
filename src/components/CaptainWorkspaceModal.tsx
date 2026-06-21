@@ -761,16 +761,28 @@ export default function CaptainWorkspaceModal({
   const handleUpgradeToAgent = async () => {
     if (!currentCaptainUser || !captainProfile) return;
     try {
+      // Kanonski ID iz e-maila (NE uid) — da se agent ne dvostruči
+      const agentEmail = (captainProfile?.email || "").trim().toLowerCase();
+      if (!agentEmail) {
+        addToast(
+          "Error",
+          "Captain profile has no email — cannot create agent.",
+          "warning",
+        );
+        return;
+      }
+      const agentId = agentEmail.replace(/[^a-z0-9]/g, "_");
       const agentData = {
-        id: currentCaptainUser.uid,
+        id: agentId,
         name: captainProfile.name,
-        email: captainProfile?.email || "",
+        email: agentEmail,
         whatsapp: captainProfile.whatsapp || profilePhone || "",
         contactPhone: profilePhone || captainProfile.phoneNumber || "",
         lineId: captainProfile.lineId || "",
+        isActive: true,
         isAdmin: false,
       };
-      await setDoc(doc(db, "agents", currentCaptainUser.uid), agentData, {
+      await setDoc(doc(db, "agents", agentId), agentData, {
         merge: true,
       });
       addToast(

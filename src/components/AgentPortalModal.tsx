@@ -97,7 +97,7 @@ import AgentReferralQrGenerator from "./AgentReferralQrGenerator";
 import PasswordInput from "./PasswordInput";
 import AgentAIAssistant from "./AgentAIAssistant";
 import AgentPricesTab from "./AgentPricesTab";
-import { generateAgentPdfQuote } from "../utils/pdfGenerator";
+import { generateCharterQuotationPdf as generateAgentPdfQuote } from "../lib/pdfGenerator";
 
 const TOUR_PRESET_ITEMS = [
   {
@@ -1073,14 +1073,15 @@ export default function AgentPortalModal({
 
   // Load customers
   React.useEffect(() => {
+    if (!isOpen || !isAgentLoggedIn) return;
     const q = query(collection(db, "customers"));
     const unsub = onSnapshot(q, (snap) => {
       const list: any[] = [];
       snap.forEach((d) => list.push({ uid: d.id, ...d.data() }));
       setCustomersList(list);
-    });
+    }, (err) => console.log('AgentPortalModal customers snapshot err', err.message));
     return () => unsub();
-  }, []);
+  }, [isOpen, isAgentLoggedIn]);
 
   // Helpers for managing manual quotation custom offered options & rates
   const handleAddManualLineItem = (preset?: any) => {

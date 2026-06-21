@@ -7,7 +7,7 @@ import {
   Anchor,
 } from "lucide-react";
 import { CATAMARANS } from "../data";
-import { generateAgentPdfQuote } from "../utils/pdfGenerator";
+import { generateCharterQuotationPdf as generateAgentPdfQuote } from "../lib/pdfGenerator";
 import { useAgent } from "../AgentContext";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";

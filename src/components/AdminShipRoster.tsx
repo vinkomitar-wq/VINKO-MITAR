@@ -15,7 +15,7 @@ export const AdminShipRoster: React.FC = () => {
     const unsub = onSnapshot(q, (snap) => {
       const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setLogs(fetched);
-    });
+    }, (err) => console.log('AdminShipRoster snapshot err', err.message));
     return () => unsub();
   }, []);
 

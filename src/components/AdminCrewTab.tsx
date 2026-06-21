@@ -63,7 +63,7 @@ export default function AdminCrewTab({
       if (doc.exists()) {
         setShips(doc.data().list || []);
       }
-    });
+    }, (err) => console.log('AdminCrewTab fleet snapshot err', err.message));
     return () => unsub();
   }, []);
 
@@ -77,7 +77,7 @@ export default function AdminCrewTab({
           ...doc.data(),
         })),
       );
-    });
+    }, (err) => console.log('AdminCrewTab crewMembers snapshot err', err.message));
 
     const q2 = query(collection(db, "captains"));
     const unsub2 = onSnapshot(q2, (snap) => {
@@ -88,7 +88,7 @@ export default function AdminCrewTab({
           ...doc.data(),
         })),
       );
-    });
+    }, (err) => console.log('AdminCrewTab captains snapshot err', err.message));
 
     return () => {
       unsub1();
@@ -135,7 +135,7 @@ export default function AdminCrewTab({
               new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
           ),
       );
-    });
+    }, (err) => console.log('AdminCrewTab crewLogs snapshot err', err.message));
     return () => unsub();
   }, []);
 
