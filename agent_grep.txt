@@ -1,0 +1,84 @@
+5:import { useAgent, Agent } from "../AgentContext";
+36:  const { agents, adminResetPassword, adminRemoveAgent, toggleCoAdmin, adminUpdateAgent, currentAgent, logout: contextLogout } = useAgent();
+45:  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+46:  const [editAgentName, setEditAgentName] = useState("");
+47:  const [editAgentPhone, setEditAgentPhone] = useState("");
+48:  const [editAgentWhatsApp, setEditAgentWhatsApp] = useState("");
+49:  const [editAgentLine, setEditAgentLine] = useState("");
+50:  const [editAgentWeChat, setEditAgentWeChat] = useState("");
+51:  const [editAgentCompany, setEditAgentCompany] = useState("");
+52:  const [editAgentAddress, setEditAgentAddress] = useState("");
+53:  const [editAgentCountry, setEditAgentCountry] = useState("");
+54:  const [editAgentTaxId, setEditAgentTaxId] = useState("");
+55:  const [editAgentWelcome, setEditAgentWelcome] = useState("");
+58:    if (editingAgent) {
+59:      setEditAgentName(editingAgent.name || "");
+60:      setEditAgentPhone(editingAgent.contactPhone || "");
+61:      setEditAgentWhatsApp(editingAgent.whatsapp || "");
+62:      setEditAgentLine(editingAgent.lineId || "");
+63:      setEditAgentWeChat(editingAgent.wechatId || "");
+64:      setEditAgentCompany(editingAgent.companyName || "");
+65:      setEditAgentAddress(editingAgent.companyAddress || "");
+66:      setEditAgentCountry(editingAgent.country || "");
+67:      setEditAgentTaxId(editingAgent.taxId || "");
+68:      setEditAgentWelcome(editingAgent.welcomeMessage || "");
+70:  }, [editingAgent]);
+98:  const isAdmin = currentAgent?.isAdmin === true;
+135:  const [agentProposals, setAgentProposals] = useState<any[]>([]);
+610:            const matchedAgent = agents?.find(a => (a.email || "").toLowerCase() === bEmail);
+611:            let agentText = matchedAgent 
+612:              ? `${matchedAgent.name}${matchedAgent.companyName ? ` (${matchedAgent.companyName})` : ""}`
+613:              : (bEmail ? `Agent ${bEmail}` : "Unassigned / General Landing");
+641:    const qAgentProps = query(collection(db, "proposals"));
+642:    const unsubAgentProps = onSnapshot(qAgentProps, (snapshot) => {
+643:      const fetchedAgentProps: any[] = [];
+645:        fetchedAgentProps.push({ id: doc.id, ...doc.data() });
+647:      fetchedAgentProps.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+648:      setAgentProposals(fetchedAgentProps);
+717:      unsubAgentProps();
+1332:                      {t("Registered Agents", "Registrirani agenti")} ({agents.length})
+1381:                              onClick={() => setEditingAgent(ag)}
+1410:                                  const res = await adminRemoveAgent(ag.email);
+1483:                          Manual Agent Custom Quotes ({agentProposals.length})
+1628:                                            <div className="font-bold text-emerald-700 uppercase tracking-widest text-[9px] mb-1">Agent / Submitter</div>
+1831:                                          Agent Remarks & Customized Plan
+1876:                                    Agent: {inq.brokerEmail || "Unassigned"}
+1894:                                    <span className="font-bold mr-2 uppercase text-[9px]">{msg.sender === "agent" ? "Agent" : "Guest"}:</span>
+2494:      {editingAgent && (
+2495:        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs" onClick={() => setEditingAgent(null)}>
+2500:                Edit Agent Info: <span className="font-sans font-bold text-slate-300 not-italic text-xs">{editingAgent.email}</span>
+2502:              <button onClick={() => setEditingAgent(null)} className="p-1 hover:bg-slate-800 rounded-xs transition-colors cursor-pointer text-slate-300">
+2513:                    value={editAgentName}
+2514:                    onChange={(e) => setEditAgentName(e.target.value)}
+2523:                    value={editAgentWhatsApp}
+2524:                    onChange={(e) => setEditAgentWhatsApp(e.target.value)}
+2534:                    value={editAgentPhone}
+2535:                    onChange={(e) => setEditAgentPhone(e.target.value)}
+2545:                    value={editAgentLine}
+2546:                    onChange={(e) => setEditAgentLine(e.target.value)}
+2555:                    value={editAgentWeChat}
+2556:                    onChange={(e) => setEditAgentWeChat(e.target.value)}
+2565:                    value={editAgentCompany}
+2566:                    onChange={(e) => setEditAgentCompany(e.target.value)}
+2575:                    value={editAgentCountry}
+2576:                    onChange={(e) => setEditAgentCountry(e.target.value)}
+2585:                    value={editAgentTaxId}
+2586:                    onChange={(e) => setEditAgentTaxId(e.target.value)}
+2596:                  value={editAgentAddress}
+2597:                  onChange={(e) => setEditAgentAddress(e.target.value)}
+2605:                  value={editAgentWelcome}
+2606:                  onChange={(e) => setEditAgentWelcome(e.target.value)}
+2617:                    if (!editingAgent.email) return;
+2618:                    const res = await adminUpdateAgent(editingAgent.email, {
+2619:                      name: editAgentName,
+2620:                      contactPhone: editAgentPhone,
+2621:                      whatsapp: editAgentWhatsApp,
+2622:                      lineId: editAgentLine,
+2623:                      wechatId: editAgentWeChat,
+2624:                      companyName: editAgentCompany,
+2625:                      companyAddress: editAgentAddress,
+2626:                      country: editAgentCountry,
+2627:                      taxId: editAgentTaxId,
+2628:                      welcomeMessage: editAgentWelcome,
+2632:                      setEditingAgent(null);
+2641:                  onClick={() => setEditingAgent(null)}

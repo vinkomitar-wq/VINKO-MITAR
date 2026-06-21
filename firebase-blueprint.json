@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "Proposal": {
+      "title": "Proposal",
+      "description": "A bespoke private catamaran charter proposal.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "charterDate": { "type": "string" },
+        "vesselId1": { "type": "string" },
+        "vesselId2": { "type": "string" },
+        "vesselId3": { "type": "string" },
+        "price1": { "type": "string" },
+        "price2": { "type": "string" },
+        "price3": { "type": "string" },
+        "compareCount": { "type": "number" },
+        "notes": { "type": "string" },
+        "agencyDetailsOverride": { "type": "string" },
+        "hidePricesOnPdf": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "userId": { "type": "string", "description": "The ID of the user (agent) who owns this proposal" }
+      },
+      "required": ["id", "clientName", "charterDate", "compareCount", "userId"]
+    },
+    "BookingRequest": {
+      "title": "BookingRequest",
+      "description": "A guest booking request submitted online.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "charterDate": { "type": "string" },
+        "vesselId1": { "type": "string" },
+        "vesselId2": { "type": "string" },
+        "vesselId3": { "type": "string" },
+        "price1": { "type": "string" },
+        "price2": { "type": "string" },
+        "price3": { "type": "string" },
+        "compareCount": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "hotelPickupLocation": { "type": "string" },
+        "customerUid": { "type": "string" },
+        "boardingStatus": { "type": "string", "enum": ["Pending", "Boarded"] }
+      },
+      "required": ["id", "clientName", "charterDate"]
+    },
+    "Agent": {
+      "title": "Agent",
+      "description": "Agent profile mapped to Firebase Auth.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "companyName": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "agentTier": { "type": "string", "enum": ["Standard", "Premium", "Platinum"] },
+        "commissionRate": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "id", "name"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer profile mapped to Firebase Auth.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "authStatus": { "type": "string" }
+      },
+      "required": ["uid", "name", "email"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "A live-chat inquiry submitted by a client to a broker representative.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "contact": { "type": "string" },
+        "message": { "type": "string" },
+        "brokerEmail": { "type": "string" },
+        "brokerId": { "type": "string" },
+        "vesselId": { "type": "string" },
+        "vesselName": { "type": "string" },
+        "charterDate": { "type": "string" },
+        "guests": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "coAgentId": { "type": "string" },
+        "coAgentName": { "type": "string" },
+        "coAgentPhone": { "type": "string" },
+        "chatHistory": {
+          "type": "array",
+          "description": "Sequential message thread logs exchanged in real-time."
+        }
+      },
+      "required": ["id", "name", "contact", "message", "brokerEmail", "brokerId", "createdAt", "isRead"]
+    },
+    "AgentChat": {
+      "title": "AgentChat",
+      "description": "Secure broker-to-broker message log.",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "fileData": { "type": "string" },
+        "fileName": { "type": "string" },
+        "timestamp": { "type": "object" }
+      },
+      "required": ["chatId", "senderId", "receiverId"]
+    }
+  },
+  "firestore": {
+    "/agent_chats/{messageId}": {
+      "schema": { "$ref": "#/entities/AgentChat" },
+      "description": "Secure internal communication messages between registered representative brokers."
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/Inquiry" },
+      "description": "List of client live-chat inquiries sent to a specific broker (filtered by brokerId)."
+    },
+    "/proposals/{proposalId}": {
+      "schema": { "$ref": "#/entities/Proposal" },
+      "description": "List of proposals mapped to an authenticated user (via userId)."
+    },
+    "/booking_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/BookingRequest" },
+      "description": "List of boat charter booking requests registered via custom form workflows."
+    },
+    "/agents/{agentId}": {
+      "schema": { "$ref": "#/entities/Agent" },
+      "description": "Agent profiles corresponding strictly to Firebase user IDs."
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customer profiles corresponding strictly to Firebase user IDs."
+    },
+    "/mail/{mailId}": {
+      "schema": "object",
+      "description": "Trigger Email collection for automated SMTP emails with PDF attachments."
+    },
+    "/promotions/{promoId}": {
+      "schema": "object",
+      "description": "Special Overnight Trip active promotion configurations and marketing flyers."
+    },
+    "/fleet/{documentId}": {
+      "schema": "object",
+      "description": "Global custom configurations for vessels, routes, and pricing overridden by Vinko in Admin Portal."
+    }
+  }
+}

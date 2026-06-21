@@ -1,0 +1,4 @@
+43:  const [activeTab, setActiveTab] = useState<"dashboard" | "agents" | "proposals" | "fleet" | "customers" | "promotions" | "inquiries" | "calendar" | "crew" | "roster" | "logs" | "assistant" | "map" | "commissions" | "feedback" | "alerts" | "booked">("dashboard");
+608:            // Format agent mapping
+1335:                      {agents.map((ag, i) => {
+1738:                              {agentProposals.map((prop, i) => {

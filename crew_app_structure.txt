@@ -1,0 +1,16 @@
+# Crew-Captain Workspace App Structure/Code Extraction
+
+## 1. Simplified Startup (App.tsx replacement concept)
+- Need a component `CrewAuthEntry.tsx` which renders:
+  - "Login Crew" (button)
+  - "Register Crew" (button)
+  - "Login Admin" (button)
+
+## 2. Core Components to Port
+- `AuthContext.tsx` or modified `AgentContext.tsx` (Handle crew-specific firebase auth)
+- `AdminCrewTab.tsx` (Main admin registry control)
+- `CaptainWorkspaceModal.tsx` (Main workspace, requires heavy simplification)
+
+## 3. Mandatory Firebase/Deps
+- `firebase.ts` (Keep config, remove unnecessary collections)
+- `types.ts` (Keep only relevant types: `CrewMember`, `Captain`, `CrewLog`)

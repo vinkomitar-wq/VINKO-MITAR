@@ -1,0 +1,6 @@
+{
+  "name": "Phuket Amazing Yacht Charter",
+  "description": "Exquisite private catamaran excursions in Phuket. Charter the Catlante 600, Imp 55, or Leopard 45 for customized day trips to stunning islands.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

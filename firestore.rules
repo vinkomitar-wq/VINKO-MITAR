@@ -1,0 +1,148 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function authEmail() {
+      return isSignedIn() ? request.auth.token.get('email', '').lower() : '';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.get('admin', false) == true ||
+        authEmail() == 'vinko.mitar@gmail.com'
+      );
+    }
+
+    function isAgent() {
+      return isSignedIn() && (
+        request.auth.token.get('agent', false) == true ||
+        isAdmin() ||
+        request.auth.token.get('email', '').lower() == "vinko.mitar@gmail.com" ||
+        request.auth.token.get('email', '').lower() == "pa-2533@hotmail.com" ||
+        request.auth.token.get('email', '').lower().endsWith("@charter-partner.com") ||
+        exists(/databases/$(database)/documents/agents/$(request.auth.uid))
+      );
+    }
+
+    function isCaptain() {
+      return isSignedIn() && (request.auth.token.get('captain', false) == true || isAdmin());
+    }
+
+    function isCrew() {
+      return isSignedIn() && (request.auth.token.get('crew', false) == true || isCaptain() || isAdmin());
+    }
+
+    function isStaff() {
+      return isAgent() || isCaptain() || isCrew() || isAdmin();
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function strOk(v, maxLen) {
+      return v is string && v.size() <= maxLen;
+    }
+
+    function isValidBookingCreate() {
+      let d = request.resource.data;
+      return d.size() <= 30
+        && d.keys().hasOnly([
+             'id','clientName','charterDate',
+             'vesselId1','vesselId2','vesselId3',
+             'price1','price2','price3','compareCount','createdAt',
+             'agentEmail','customerPhone','customerEmail',
+             'hotelPickupLocation','customerUid','optInReminder','timestamp'
+           ])
+        && strOk(d.clientName, 200)
+        && strOk(d.charterDate, 40)
+        && strOk(d.get('customerEmail', ''), 254)
+        && strOk(d.get('customerPhone', ''), 40)
+        && strOk(d.get('hotelPickupLocation', ''), 500);
+    }
+
+    function isValidInquiryCreate() {
+      let d = request.resource.data;
+      return d.size() <= 40
+        && strOk(d.get('customerName', ''), 200)
+        && strOk(d.get('customerEmail', ''), 254)
+        && strOk(d.get('message', ''), 5000);
+    }
+
+    // ---------- Customers ----------
+    match /customers/{customerId} {
+      allow read, list, get: if true;
+      allow create, update: if true;
+      allow delete: if isAdmin();
+
+      match /bookings/{bookingId} {
+        allow read:   if true;
+        allow create: if true;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // ---------- Booking requests (PUBLIC create) ----------
+    match /booking_requests/{requestId} {
+      allow create, read, list, get, update, delete: if true;
+    }
+
+    // ---------- Inquiries (PUBLIC create / live chat) ----------
+    match /inquiries/{inquiryId} {
+      allow read, list, get, create, update, delete: if true;
+
+      match /messages/{messageId} {
+        allow read, create, update, delete: if true;
+      }
+    }
+
+    // ---------- Fleet & Operations ----------
+    match /fleet/{docId} { allow read, write: if true; }
+    match /fleet_positions/{docId} { allow read, write: if true; }
+    match /proposals/{docId} { allow read, write: if true; }
+    match /crewLogs/{docId} { allow read, write: if true; }
+    match /crewMembers/{docId} { allow read, write: if true; }
+    match /captains/{docId} { allow read, write: if true; }
+    match /adminAlerts/{docId} { allow read, write: if true; }
+    match /guestFeedbacks/{docId} { allow read, write: if true; }
+    match /boarding_notifications/{docId} { allow read, write: if true; }
+    match /securityIncidents/{docId} { allow read, write: if true; }
+    match /agent_chats/{docId} { 
+      allow read, write: if true; 
+      match /messages/{paramId} { allow read, write: if true; }
+    }
+    match /vesselLocations/{docId} { allow read, write: if true; }
+    match /pdf_chats/{docId} { 
+      allow read, write: if true;
+      match /messages/{paramId} { allow read, write: if true; } 
+    }
+    match /live_sessions/{docId} { allow read, write: if true; }
+    match /captain_notifications/{docId} { allow read, write: if true; }
+    match /captain_shifts/{docId} { allow read, write: if true; }
+    match /agent_drive_folders/{docId} { allow read, write: if true; }
+    match /admin_registered_guests/{docId} { allow read, write: if true; }
+    match /mail/{docId} { allow read, write: if true; }
+    
+    // ---------- Agents ----------
+    match /agents/{agentId} {
+      allow read, list, get: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+    
+    match /promotions/{docId} { allow read, write: if true; }
+    match /agent_presence/{docId} { allow read, write: if true; }
+    
+    // ---------- Settings / Public Data ----------
+    match /settings/{docId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+  }
+}

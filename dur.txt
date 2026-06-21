@@ -1,0 +1,77 @@
+99:    charterDuration?: string;
+213:    charterDuration: "halfday",
+283:  // Dispatch event when charterDuration changes so other components stay sync'd
+285:    window.dispatchEvent(new CustomEvent('booking-duration-changed', { detail: formData.charterDuration }));
+286:  }, [formData.charterDuration]);
+297:    if (formData.charterDuration === "halfday" && (isAoPo || hasIneligible)) {
+300:        charterDuration: "fullday"
+303:  }, [formData.startPierId, formData.destinations, formData.charterDuration]);
+395:      (formData.charterDuration as any) || "halfday",
+403:  }, [formData.charterDuration, formData.celebrationPackage]);
+678:      charterDuration: isBest ? prev.charterDuration : (prev.charterDuration === "overnight" ? "fullday" : prev.charterDuration)
+701:        ...(detail.duration && { charterDuration: detail.duration }),
+1089:      let newDuration = prev.charterDuration;
+1092:      if (isPhiPhiNow && prev.charterDuration === "halfday") {
+1096:      return { ...prev, destinations: newDestinations, charterDuration: newDuration };
+1351:    const isOvernight = formData.charterDuration === "overnight";
+1488:    const destNames = formData.charterDuration === "overnight" 
+1511:    const durationText = formData.charterDuration === "halfday"
+1513:      : formData.charterDuration === "fullday"
+1635:              const routeText = formData.charterDuration === "overnight"
+1648:                charterDuration: formData.charterDuration,
+1761:    addLine(`Duration: ${formData.charterDuration === "halfday" ? "Half Day" : formData.charterDuration === "fullday" ? "Full Day" : "Overnight Suite"}`);
+1765:    const destNames = formData.charterDuration === "overnight"
+1980:          excursionRoute: formData.charterDuration === "overnight" ? "Custom Overnight Itinerary" : DESTINATIONS.filter(d => formData.destinations.includes(d.id)).map(d => d.name).join(" • "),
+1982:          charterDuration: formData.charterDuration,
+2043:          excursionRoute: formData.charterDuration === "overnight" ? "Custom Overnight Itinerary" : DESTINATIONS.filter(d => formData.destinations.includes(d.id)).map(d => d.name).join(" • "),
+2045:          charterDuration: formData.charterDuration,
+2075:        excursionRoute: formData.charterDuration === "overnight" ? "Custom Overnight Itinerary" : DESTINATIONS.filter(d => formData.destinations.includes(d.id)).map(d => d.name).join(" • "),
+2077:        charterDuration: formData.charterDuration,
+2123:          excursionRoute: formData.charterDuration === "overnight" ? "Custom Overnight Itinerary" : DESTINATIONS.filter(d => formData.destinations.includes(d.id)).map(d => d.name).join(" • "),
+2125:          charterDuration: formData.charterDuration,
+2182:        excursionRoute: formData.charterDuration === "overnight" ? "Custom Overnight Itinerary" : DESTINATIONS.filter(d => formData.destinations.includes(d.id)).map(d => d.name).join(" • "),
+2184:        charterDuration: formData.charterDuration,
+2235:        excursionRoute: formData.charterDuration === "overnight" ? "Custom Overnight Itinerary" : DESTINATIONS.filter(d => formData.destinations.includes(d.id)).map(d => d.name).join(" • "),
+2237:        charterDuration: formData.charterDuration,
+2275:        excursionRoute: formData.charterDuration === "overnight" ? "Custom Overnight Itinerary" : DESTINATIONS.filter(d => formData.destinations.includes(d.id)).map(d => d.name).join(" • "),
+2277:        charterDuration: formData.charterDuration,
+2515:    const isFullDay = formData.charterDuration === "fullday" || formData.charterDuration === "full-day";
+2516:    const finalDurationText = (formData.charterDuration === "halfday")
+2850:      : getPackageDefaults((formData.charterDuration as any) || "halfday", formData.celebrationPackage || "none").inclusions.map(i => `• ${i}`);
+2854:      : getPackageDefaults((formData.charterDuration as any) || "halfday", formData.celebrationPackage || "none").exclusions.map(e => `• ${e}`);
+2874:    const durationLabel = formData.charterDuration === "halfday" 
+2876:      : formData.charterDuration === "fullday" 
+2976:    if (isAgentMode && formData.charterDuration !== "overnight") {
+3013:       if (formData.charterDuration !== "overnight") {
+3310:          {formData.destinations.some(d => !isDestinationEligibleForHalfDay(d)) && formData.charterDuration !== "overnight" && (
+3326:          {formData.charterDuration === "overnight" && (
+3365:                setFormData((prev) => ({ ...prev, charterDuration: "halfday" }));
+3371:                  : "cursor-pointer " + (formData.charterDuration === "halfday"
+3380:                {formData.charterDuration === "halfday" && (
+3398:                setFormData((prev) => ({ ...prev, charterDuration: "fullday" }));
+3402:                formData.charterDuration === "fullday"
+3411:                {formData.charterDuration === "fullday" && (
+3424:                   setFormData((prev) => ({ ...prev, charterDuration: "overnight" }));
+3428:                  formData.charterDuration === "overnight"
+3437:                  {formData.charterDuration === "overnight" && (
+3449:          {formData.vesselId === "the-best" && formData.charterDuration === "overnight" && (
+3480:          {formData.vesselId === "the-best" && formData.charterDuration === "overnight" && (
+3529:                    {formData.charterDuration === 'overnight' && (
+3999:        {formData.charterDuration !== "overnight" && (
+4175:            {formData.charterDuration === "overnight" 
+4215:                {formData.charterDuration === "overnight"
+4221:              {formData.charterDuration === "overnight" && (
+4276:              {isPhiPhi && formData.charterDuration !== "overnight" && (
+4574:                    const durationHours = (formData.charterDuration === "fullday" || formData.charterDuration === "full-day") ? 9.5 : (formData.destinations.some(d => d.includes("phi-phi")) ? 12.0 : (formData.charterDuration === "halfday" || formData.charterDuration === "half-day" ? 4.5 : 24.0));
+4577:                    let runningTime = (formData.charterDuration === "fullday" || formData.charterDuration === "full-day") ? 9.5 : (isPhiPhi ? 8.0 : 8.5);
+4623:                                {(formData.charterDuration === "fullday" || formData.charterDuration === "full-day") ? "09:00 / 09:30" : (isPhiPhi ? "08:00 / 08:30" : "08:30")} • Start Pier
+4701:                            {(formData.charterDuration === "fullday" || formData.charterDuration === "full-day") ? "07:00 PM (19:00)" : (isPhiPhi ? "08:00 PM / 08:30 PM" : "05:00 - 06:30 PM")} • Return Arrival
+4795:                    {ctx("upgrade.cabinDesc", "Select up to " + (formData.charterDuration === "overnight" ? "6" : "5") + " luxury double master cabins with dedicated private ensuite showers.")}
+4805:                  {Array.from({ length: formData.charterDuration === "overnight" ? 6 : 5 }).map((_, i) => (
+5949:        {currentAgent && !isReferred && formData.charterDuration !== "overnight" && (
+5961:                  placeholder={`Standard: ${formatPrice(selectedVesselObj && VESSEL_BASE_RATES[selectedVesselObj.id] ? (formData.charterDuration === "halfday" ? VESSEL_BASE_RATES[selectedVesselObj.id].halfday : formData.charterDuration === "fullday" ? VESSEL_BASE_RATES[selectedVesselObj.id].fullday : VESSEL_BASE_RATES[selectedVesselObj.id].overnight * (formData.overnightDays || 1)) : 0)}`}
+6080:                      <span className="truncate mr-4 flex-1">{formData.charterDuration === "halfday" ? "Charter (Half Day)" : formData.charterDuration === "fullday" ? "Charter (Full Day)" : "Charter (Overnight)"}</span>
+6250:                    charterDuration: "overnight",
+6326:                    charterDuration: prev.charterDuration === "overnight" ? "halfday" : prev.charterDuration,
+6460:                    {(formData.charterDuration === "halfday") ? "Half Day (4h)" : (formData.charterDuration === "fullday" || formData.charterDuration === "full-day") ? "Full Day (9.5h, 09:30 - 19:00)" : `Overnight (${formData.overnightDays} days)`}
+6461:                    {(formData.charterDuration === "overnight") && formData.cabinCount > 0 && ` • ${formData.cabinCount} Cabins`}

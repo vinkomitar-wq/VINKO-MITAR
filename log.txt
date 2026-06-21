@@ -1,0 +1,80 @@
+import { jsPDF } from "jspdf";
+  compileManifestPdf,
+import PDFChatModal from "./PDFChatModal";
+import { generateAgentPdfQuote } from "../utils/pdfGenerator";
+      const blob = await generateAgentPdfQuote(proposal, currentAgent, true);
+      const fileName = `phuket_charter_proposal_${clientNameClean}_quote.pdf`;
+        throw new Error("Failed to upload proposal PDF to Google Drive.");
+  const [isPdfChatOpen, setIsPdfChatOpen] = useState(false);
+      } else if (action === "download-proposal-pdf") {
+          generateAgentPdfQuote(pObj, currentAgent);
+          console.warn("Could not find any proposals to generate PDF from.");
+    if (file.type !== "application/pdf") {
+      alert("Only PDF files are supported.");
+          text: `📄 Sent a PDF Document: ${file.name}`,
+          isPdfAttached: true,
+          pdfData: base64Data,
+                "Firestore PDF attach failed or quota limit reached, saving to local inquiries backup:",
+          console.error("Failed inside PDF attach thread:", innerErr);
+      console.error("Failed to upload PDF:", err);
+      alert("An error occurred uploading the PDF");
+          `💡 Live Agent Action: Click 'Download Passenger Manifest PDF' in the compliance panel above to compile official Harbor Master forms.`;
+  const handleCustomerDownloadPdf = () => {
+      const docData = compileManifestPdf(
+      const fileName = `Official_Insurance_Manifest_${(customerData?.name || "guest").toLowerCase().replace(/\s+/g, "_")}.pdf`;
+      console.error("PDF download crashed:", e);
+      alert("Error building document PDF: " + e.message);
+                                            await generateAgentPdfQuote(
+                                          title="Download Quote PDF"
+                                          <span>PDF</span>
+                                              ? "Backup Quote PDF to Google Drive"
+                                            Hide Prices on PDF
+                                                editingProposal.hidePricesOnPdf ||
+                                                  hidePricesOnPdf:
+                                  {book.pdfBase64 && (
+                                        href={book.pdfBase64}
+                                        download={`Booking_${book.id}.pdf`}
+                                        Export Booking PDF
+                                                    <button onclick="window.print()" style="background: #059669; color: white; border: none; padding: 8px 16px; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px;">Print / Save as PDF</button>
+                                            title="Generate Custom PDF Quotation"
+                                                    const docObj = new jsPDF();
+                                                    const fName = `Insurance_Manifest_${(activeInq.name || "guest").toLowerCase().replace(/\s+/g, "_")}.pdf`;
+                                                  } catch (pdfErr: any) {
+                                                      "Agent PDF generation failed:",
+                                                      pdfErr,
+                                                      "Failed compiling PDF: " +
+                                                        pdfErr.message,
+                                                title="Download secure insurance & manifest clearance PDF"
+                                                <span>Download PDF</span>
+                                        {/* Render Extracted CRM Profile from PDF Chatbot if present */}
+                                                Extracted CRM Lead Profile (PDF
+                                            {(activeInq.pdfData ||
+                                                      "itinerary.pdf"}
+                                                        activeInq.pdfData;
+                                                        "document.pdf";
+                                                        "PDF download failed",
+                                                        "Unable to fetch PDF binary download stream.",
+                                                  Download Luka's Original PDF
+                                                        {item.isPdfAttached &&
+                                                          item.pdfData && (
+                                                                      item.pdfData,
+                                                                    "document.pdf";
+                                                                    "PDF download error:",
+                                                                    "Failed to download PDF document.",
+                                                              Download PDF
+                                                                  new jsPDF();
+                                                                const fName = `Insurance_Manifest_${(activeInq.name || "guest").toLowerCase().replace(/\s+/g, "_")}.pdf`;
+                                                              } catch (pdfErr: any) {
+                                                                  "Agent PDF generation failed:",
+                                                                  pdfErr,
+                                                                  "Failed compiling PDF: " +
+                                                                    pdfErr.message,
+                                                            Manifest PDF
+                                            accept="application/pdf"
+                            {/* Option 2: Download PDF directly */}
+                              onClick={handleCustomerDownloadPdf}
+                              Download PDF Manifest for Insurance
+          {/* PDF Chatbot Modal */}
+          <PDFChatModal
+            isOpen={isPdfChatOpen}
+            onClose={() => setIsPdfChatOpen(false)}
