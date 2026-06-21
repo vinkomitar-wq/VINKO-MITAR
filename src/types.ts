@@ -4,6 +4,8 @@ export interface Catamaran {
   model: string;
   image: string;
   images?: string[];
+  cabinImages?: string[];
+  videoUrl?: string;
   capacity: number;
   length: string;
   cabins: number;
@@ -48,6 +50,7 @@ export interface Destination {
   imagePlaceholder: string; // Lucide or style color block
   imageUrl?: string;
   imageUrls?: string[]; // photo URL
+  videoUrl?: string; // Add video link support
   priceOverlay?: number;
 }
 
@@ -124,6 +127,7 @@ export interface BookingState {
   hotelPickupLocation: string;
   customInclusions?: string[];
   customExclusions?: string[];
+  customAddonKeys?: string[];
 }
 
 export interface BookingRecord {
@@ -134,4 +138,13 @@ export interface BookingRecord {
   price1: string;
   clientName: string;
   createdAt: string;
+}
+
+export interface StandardExtra {
+  key: string;
+  label: string;
+  defaultPrice: number;
+  imageUrl?: string;
+  imageUrls?: string[];
+  description?: string;
 }

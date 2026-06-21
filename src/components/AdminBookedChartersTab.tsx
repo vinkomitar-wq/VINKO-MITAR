@@ -78,9 +78,15 @@ export default function AdminBookedChartersTab({
 
   const downloadPdf = async (proposal: any) => {
     try {
-      await generateAgentPdfQuote(proposal, {
-        name: proposal.agencyName || "Admin",
-      });
+      const pdfData = {
+        clientName: proposal.clientName || "Valued Customer",
+        charterDate: proposal.charterDate || "",
+        vesselName: proposal.vesselId1 || "Premium Catamaran",
+        price: proposal.price1 || "Contact Broker",
+        notes: proposal.notes || "Official proposal.",
+      };
+      const doc = generateAgentPdfQuote(pdfData);
+      doc.save(`charter_quote_${(proposal.clientName || "guest").toLowerCase().replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
       console.error("Failed to generate PDF for admin:", err);
       alert("Failed to reconstruct PDF for this booking.");

@@ -7,7 +7,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import firebaseConfig from "../firebase-applet-config.json";
+import firebaseConfig from "../../firebase-applet-config.json";
 
 interface LogLine {
   type: "ok" | "skip" | "fail";

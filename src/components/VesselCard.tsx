@@ -21,12 +21,15 @@ import {
   Mail,
   Facebook,
   Copy,
+  Play,
+  Video,
 } from "lucide-react";
 import { Catamaran } from "../types";
 import { useLanguage } from "../LanguageContext";
 import { useCurrency } from "../CurrencyContext";
 import VesselLightbox from "./VesselLightbox";
 import { ImageWithFallback } from "./ImageWithFallback";
+import VesselVideoModal from "./VesselVideoModal";
 
 export const VESSEL_BASE_RATES: Record<
   string,
@@ -753,6 +756,7 @@ export default function VesselCard({
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [tiktokCopied, setTiktokCopied] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [useContain, setUseContain] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
@@ -851,7 +855,7 @@ export default function VesselCard({
       </div>
 
       {/* Multi-photo Slideshow indicator badge & Aspect Toggle */}
-      <div className="absolute top-4 right-4 z-30 flex flex-col items-end gap-2">
+      <div className="absolute top-4 right-4 z-30 flex flex-col items-end gap-2 text-right">
         {images.length > 1 && (
           <div className="flex items-center gap-1.5 rounded-xs bg-black/60 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur-xs font-mono pointer-events-none shadow-sm">
             <Images className="h-3.5 w-3.5 text-amber-400" />
@@ -872,6 +876,27 @@ export default function VesselCard({
         >
           {useContain ? "🔍 Fill Card" : "⛵ Whole Yacht"}
         </button>
+
+        {vessel.videoUrl && (
+          <button
+            id={`watch-vessel-video-${vessel.id}`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setIsVideoOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xs bg-rose-600 hover:bg-rose-700 text-white text-[9px] uppercase tracking-wider font-sans font-black shadow-md border border-rose-500/30 transition-all cursor-pointer pointer-events-auto active:scale-95 duration-150"
+            title="Watch Cinematic Walkthrough Video Tour"
+          >
+            <span className="relative flex h-2 w-2 mr-1">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-100"></span>
+            </span>
+            <Play className="h-3 w-3 fill-white text-white" />
+            <span>Watch Tour / Video</span>
+          </button>
+        )}
       </div>
 
       {/* Image Container with Editorial Zoom effect & Carousel Controls */}
@@ -1375,6 +1400,16 @@ export default function VesselCard({
         vesselName={translatedName}
         initialIndex={currentIdx}
       />
+
+      {/* Video Tour Modal Dialog */}
+      {vessel.videoUrl && (
+        <VesselVideoModal
+          isOpen={isVideoOpen}
+          onClose={() => setIsVideoOpen(false)}
+          videoUrl={vessel.videoUrl}
+          vesselName={translatedName}
+        />
+      )}
     </motion.div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { compressImage } from "../utils/imageCompressor";
 import {
   Anchor,
   Shield,
@@ -26,6 +27,7 @@ import {
   UserCheck,
   Inbox,
   Map as MapIcon,
+  Compass,
   Ship,
   Star,
   HardDrive,
@@ -573,14 +575,15 @@ export default function AdminPortal() {
     }
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPromoPhotoBase64(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith("image/")) {
+        const compressed = await compressImage(file, 1500, 1500, 0.8);
+        setPromoPhotoBase64(compressed);
+      } else {
+        alert("Please upload an image file.");
+      }
     }
   };
 
@@ -595,25 +598,27 @@ export default function AdminPortal() {
     }
   };
 
-  const handleFlyerPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFlyerPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPromoFlyerPhotoBase64(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith("image/")) {
+        const compressed = await compressImage(file, 1500, 1500, 0.8);
+        setPromoFlyerPhotoBase64(compressed);
+      } else {
+        alert("Please upload an image file.");
+      }
     }
   };
 
-  const handleDailyPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDailyPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setDailyPromoPhotoBase64(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith("image/")) {
+        const compressed = await compressImage(file, 1500, 1500, 0.8);
+        setDailyPromoPhotoBase64(compressed);
+      } else {
+        alert("Please upload an image file.");
+      }
     }
   };
 
@@ -628,16 +633,17 @@ export default function AdminPortal() {
     }
   };
 
-  const handleDailyFlyerPhotoUpload = (
+  const handleDailyFlyerPhotoUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setDailyPromoFlyerPhotoBase64(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      if (file.type.startsWith("image/")) {
+        const compressed = await compressImage(file, 1500, 1500, 0.8);
+        setDailyPromoFlyerPhotoBase64(compressed);
+      } else {
+        alert("Please upload an image file.");
+      }
     }
   };
 
@@ -2186,17 +2192,36 @@ export default function AdminPortal() {
                       </div>
                     )}
 
+                    {activeTab === "destinations" && (
+                      <div className="bg-white border text-left border-slate-200 rounded-xs shadow-sm p-5 space-y-4">
+                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                          <Compass className="h-4 w-4 text-emerald-600" />
+                          Destination Guide Editor (Simulation)
+                        </h3>
+                        <div className="space-y-4">
+                          <div className="p-4 border border-slate-200 rounded-xs">
+                            <h4 className="text-sm font-bold text-slate-800 mb-2">Phi Phi Islands</h4>
+                            <div className="space-y-2">
+                              <div>
+                                <label className="text-xs font-bold text-slate-500">Video URL</label>
+                                <input type="text" defaultValue="https://youtu.be/Va90C0J5Oxc?si=dSBZC1T8CyxECfRm" className="w-full text-xs p-2 border border-slate-300 rounded"/>
+                              </div>
+                              <button className="bg-emerald-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-xs cursor-pointer" onClick={() => alert("Simulated: Destination content update initiated. (Persistence requires DB migration)")}>Save Destination</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {activeTab === "agents" && (
                       <div className="bg-white border text-left border-slate-200 rounded-xs shadow-sm p-5 space-y-4">
                         <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
                           <Users className="h-4 w-4 text-emerald-600" />
-                          {t("Registered Agents", "Registrirani agenti")} (
-                          {agents.length})
+                          {t("Registered Agents", "Registrirani agenti")} ({agents.length})
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {agents.map((ag, i) => {
                             const vipUrl = `${getPublicUrl()}/?agent=${encodeURIComponent(ag.email || "")}&agentName=${encodeURIComponent(ag.name || "")}&agentWhatsApp=${encodeURIComponent(ag.whatsapp || "")}&agentPhone=${encodeURIComponent(ag.contactPhone || "")}`;
-
                             return (
                               <div
                                 key={i}
@@ -3270,7 +3295,7 @@ export default function AdminPortal() {
                           </h3>
                         </div>
 
-                        <AdminFleetSettings onAlert={safeAlert} />
+                        <AdminFleetSettings onAlert={safeAlert} isAdmin={true} />
                       </div>
                     )}
 

@@ -367,17 +367,19 @@ export default function AdminCrewTab({
                 type="file"
                 accept="image/*"
                 capture="environment"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
+                    if (file.type.startsWith("image/")) {
+                      const { compressImage } = await import("../utils/imageCompressor");
+                      const compressed = await compressImage(file, 800, 800, 0.8);
                       setFormData({
                         ...formData,
-                        photoUrl: reader.result as string,
+                        photoUrl: compressed,
                       });
-                    };
-                    reader.readAsDataURL(file);
+                    } else {
+                      alert("Please upload an image file.");
+                    }
                   }
                 }}
                 className="w-full bg-white border border-slate-300 text-slate-800 text-xs rounded-xs px-3 py-1.5 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"

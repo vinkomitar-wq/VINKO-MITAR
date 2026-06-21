@@ -58,7 +58,7 @@ import {
   Phone,
 } from "lucide-react";
 import { Catamaran, Pier, Destination, BookingState } from "../types";
-import { CATAMARANS, PIERS, DESTINATIONS } from "../data";
+import { CATAMARANS, PIERS, DESTINATIONS, STANDARD_EXTRAS } from "../data";
 import { useLanguage } from "../LanguageContext";
 import { useAgent } from "../AgentContext";
 import { useCurrency } from "../CurrencyContext";
@@ -140,6 +140,19 @@ interface BookingFormProps {
   children?: React.ReactNode;
   initialFormStep?: number;
 }
+
+export const getVesselMaxCabins = (vesselId: string, duration: string): number => {
+  if (vesselId === "the-best") {
+    return duration === "overnight" ? 6 : 4;
+  }
+  if (vesselId === "namaste") {
+    return 2;
+  }
+  if (vesselId === "the-one") {
+    return 1;
+  }
+  return 0;
+};
 
 export const isDestinationEligibleForHalfDay = (id: string): boolean => {
   const eligibleIds = [
@@ -359,6 +372,7 @@ export default function BookingForm({
     hotelPickupLocation: "",
     customInclusions: [],
     customExclusions: [],
+    customAddonKeys: [],
   });
 
   const [wantToRegister, setWantToRegister] = useState(false);
@@ -871,6 +885,18 @@ export default function BookingForm({
     }
     const nextTotal = nextAdults + nextKids;
 
+    const isOvernightSupported =
+      initialVesselId === "the-best" || initialVesselId === "namaste";
+
+    const nextCharterDuration = isOvernightSupported
+      ? formData.charterDuration
+      : formData.charterDuration === "overnight"
+        ? "fullday"
+        : formData.charterDuration;
+
+    const maxCabinsForNext = getVesselMaxCabins(initialVesselId, nextCharterDuration);
+    const nextCabinCount = Math.min(formData.cabinCount || 0, maxCabinsForNext);
+
     setFormData((prev) => ({
       ...prev,
       vesselId: initialVesselId,
@@ -879,13 +905,8 @@ export default function BookingForm({
       guestCount: nextTotal,
       addCharcoalBBQ: isBest ? prev.addCharcoalBBQ : false,
       addKaraoke: isBest ? prev.addKaraoke : false,
-      addCabinRental: isBest ? prev.addCabinRental : false,
-      cabinCount: isBest ? prev.cabinCount : 0,
-      charterDuration: isBest
-        ? prev.charterDuration
-        : prev.charterDuration === "overnight"
-          ? "fullday"
-          : prev.charterDuration,
+      cabinCount: nextCabinCount,
+      charterDuration: nextCharterDuration,
     }));
   }
 
@@ -1178,6 +1199,7 @@ export default function BookingForm({
       whiteWineBottles: 0,
       beerCartons: 0,
       addSashimi: false,
+      customAddonKeys: [],
     }));
   };
 
@@ -1623,10 +1645,12 @@ export default function BookingForm({
         price: getPrice("inflatablePool", 5000),
       });
     }
-    if (formData.cabinCount > 0) {
+    const maxCabinsAllowed = getVesselMaxCabins(selectedVesselObj.id, formData.charterDuration);
+    const calculatedCabinCount = Math.min(formData.cabinCount || 0, maxCabinsAllowed);
+    if (calculatedCabinCount > 0) {
       upgradesList.push({
-        name: `Private Cabin Access (Qty: ${formData.cabinCount})`,
-        price: getPrice("cabinCount", 3000, formData.cabinCount),
+        name: `Private Cabin Access (Qty: ${calculatedCabinCount})`,
+        price: getPrice("cabinCount", 3000, calculatedCabinCount),
       });
     }
     if (formData.addGasBBQ) {
@@ -1814,6 +1838,23 @@ export default function BookingForm({
       });
     }
 
+    // Dynamically calculate manually added custom extras
+    if (formData.customAddonKeys && formData.customAddonKeys.length > 0) {
+      formData.customAddonKeys.forEach((key) => {
+        const skipKeys = ["waterSlider", "inflatablePool", "cabinCount", "gasBBQ", "charcoalBBQ", "extraWatermelon", "extraSnack", "extraPineapple", "karaoke", "longtailBoat", "mayaBayTicketAndLongtail", "jamesBondTicket", "jetski", "minibusTransfer", "guide", "fishingGear", "fishingHandlines", "bartender", "birthdayCake", "champagne", "partyDecorations", "flowerBouquet", "photographer", "droneVideography", "dj", "sashimi", "redWine", "whiteWine", "beer"];
+        if (skipKeys.includes(key)) return;
+
+        const extraItem = STANDARD_EXTRAS.find((e) => e.key === key);
+        if (extraItem) {
+          const defaultVal = extraItem.defaultPrice !== undefined ? extraItem.defaultPrice : 1000;
+          upgradesList.push({
+            name: `${extraItem.label}`,
+            price: getPrice(key, defaultVal),
+          });
+        }
+      });
+    }
+
     if (isAgentOverride && customAgentPrices.destinationSurcharge) {
       const destFee = parseFloat(customAgentPrices.destinationSurcharge) || 0;
       if (destFee > 0) {
@@ -1891,8 +1932,10 @@ export default function BookingForm({
     if (formData.addWaterSlider) upgrades.push("Inflatable Sea Water Slider");
     if (formData.addInflatablePool)
       upgrades.push("Inflatable Ocean Swimming Pool");
-    if (formData.cabinCount > 0)
-      upgrades.push(`Private Cabin Access (Qty: ${formData.cabinCount})`);
+    const maxCabinsAllowed = getVesselMaxCabins(selectedVesselObj?.id || "", formData.charterDuration);
+    const calculatedCabinCount = Math.min(formData.cabinCount || 0, maxCabinsAllowed);
+    if (calculatedCabinCount > 0)
+      upgrades.push(`Private Cabin Access (Qty: ${calculatedCabinCount})`);
     if (formData.addGasBBQ) upgrades.push("Gas Barbecue Grill");
     if (formData.addCharcoalBBQ && selectedVesselObj?.id === "the-best") {
       upgrades.push("Charcoal Barbecue Grill");
@@ -2287,26 +2330,11 @@ export default function BookingForm({
                       .map((d) => d.name)
                       .join(" • ");
 
-              await sendBookingConfirmationEmail(
-                emailToUse,
-                {
-                  to: emailToUse,
-                  clientName: formData.customerName || "Valued Guest",
-                  charterDate:
-                    formData.charterDate ||
-                    new Date().toISOString().split("T")[0],
-                  vesselName: selectedVesselObj?.name || "Premium Catamaran",
-                  vesselModel: selectedVesselObj?.model || "Charter",
-                  totalPrice: priceCalculation?.total
-                    ? priceCalculation.total
-                    : "Upon Request",
-                  excursionRoute: routeText,
-                  guestCount: formData.guestCount,
-                  charterDuration: formData.charterDuration,
-                  optInReminder: formData.optInReminder,
-                },
-                pdfBase64,
-              );
+              await sendBookingConfirmationEmail({
+                to: [emailToUse],
+                customerName: formData.customerName || "Valued Guest",
+                bookingRequestRef: null,
+              });
             }
           } catch (emailErr) {
             console.error(
@@ -4642,8 +4670,8 @@ export default function BookingForm({
                           </p>
                         </div>
 
-                        {/* Overnight Option (THE BEST exclusive) */}
-                        {formData.vesselId === "the-best" && (
+                        {/* Overnight Option (The Best and Namaste support overnight) */}
+                        {formData.vesselId !== "the-one" && (
                           <div
                             onClick={() => {
                               setFormData((prev) => ({
@@ -4669,17 +4697,22 @@ export default function BookingForm({
                               )}
                             </div>
                             <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
-                              {ctx(
-                                "step1b.overnightDesc",
-                                "The ultimate private yachting luxury. Sleep secure in 6-cabin AC comfort, waking up to pristine bays, deserted islands, and custom multi-day voyages.",
-                              )}
+                              {formData.vesselId === "the-best"
+                                ? ctx(
+                                    "step1b.overnightDesc",
+                                    "The ultimate private yachting luxury. Sleep secure in 6-cabin AC comfort, waking up to pristine bays, deserted islands, and custom multi-day voyages.",
+                                  )
+                                : ctx(
+                                    "step1b.overnightDescNamaste",
+                                    "The ultimate private yachting luxury. Sleep secure in 2-cabin AC comfort, waking up to pristine bays, deserted islands, and custom multi-day voyages.",
+                                  )}
                             </p>
                           </div>
                         )}
                       </div>
 
                       {/* Overnight Days Selector Sub-box */}
-                      {formData.vesselId === "the-best" &&
+                      {formData.vesselId !== "the-one" &&
                         formData.charterDuration === "overnight" && (
                           <motion.div
                             initial={{ opacity: 0, y: -8 }}
@@ -4731,7 +4764,7 @@ export default function BookingForm({
                           </motion.div>
                         )}
 
-                      {formData.vesselId === "the-best" &&
+                      {formData.vesselId !== "the-one" &&
                         formData.charterDuration === "overnight" && (
                           <motion.div
                             initial={{ opacity: 0, y: -8 }}
@@ -4985,10 +5018,10 @@ export default function BookingForm({
                                     <option value={0}>
                                       0 - No double cabins requested
                                     </option>
-                                    {Array.from({ length: 6 }).map((_, i) => (
+                                    {Array.from({ length: getVesselMaxCabins(formData.vesselId, formData.charterDuration) }).map((_, i) => (
                                       <option key={i + 1} value={i + 1}>
                                         {i + 1} Double ensuite cabin
-                                        {i > 0 ? "s" : ""} (Max 6)
+                                        {i > 0 ? "s" : ""} (Max {getVesselMaxCabins(formData.vesselId, formData.charterDuration)})
                                       </option>
                                     ))}
                                   </select>
@@ -6266,25 +6299,22 @@ export default function BookingForm({
                                       : "border-slate-200 bg-white text-slate-705 hover:border-slate-400"
                                   }`}
                                 >
-                                  {dest.imageUrls &&
-                                  dest.imageUrls.length === 2 ? (
-                                    <div className="w-full h-28 mb-3 flex gap-1 relative shrink-0">
-                                      <div className="flex-1 overflow-hidden rounded-l-sm border-y border-l border-slate-100 relative">
-                                        <ImageWithFallback
-                                          referrerPolicy="no-referrer"
-                                          src={dest.imageUrls[0]}
-                                          alt={dest.name}
-                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
-                                      </div>
-                                      <div className="flex-1 overflow-hidden rounded-r-sm border-y border-r border-slate-100 relative">
-                                        <ImageWithFallback
-                                          referrerPolicy="no-referrer"
-                                          src={dest.imageUrls[1]}
-                                          alt={dest.name}
-                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
-                                      </div>
+                                  {dest.imageUrls && dest.imageUrls.length > 0 ? (
+                                    <div className={`w-full h-28 mb-3 gap-1 relative shrink-0 overflow-hidden rounded-sm grid ${
+                                      dest.imageUrls.length === 1 ? "grid-cols-1" :
+                                      dest.imageUrls.length === 2 ? "grid-cols-2" :
+                                      dest.imageUrls.length === 3 ? "grid-cols-3" : "grid-cols-2 grid-rows-2"
+                                    }`}>
+                                      {dest.imageUrls.slice(0, 4).map((url, i) => (
+                                        <div key={i} className="overflow-hidden relative h-full w-full border border-slate-100">
+                                          <ImageWithFallback
+                                            referrerPolicy="no-referrer"
+                                            src={url}
+                                            alt={`${dest.name} ${i + 1}`}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                          />
+                                        </div>
+                                      ))}
                                       {isSelected && (
                                         <div className="absolute inset-0 ring-2 ring-emerald-600 rounded-sm pointer-events-none" />
                                       )}
@@ -6779,263 +6809,364 @@ export default function BookingForm({
                   </div>
                 )}
 
-                {formStep === 6 && (
-                  <div>
-                    {/* Dynamic upgrades picker as requested by user */}
-                    <div className="border bg-slate-50/50 rounded-xs p-6 space-y-4">
-                      <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-[0.2em] font-sans flex items-center gap-1.5">
-                        <Sparkles className="h-4 w-4 text-amber-500 fill-amber-300" />
-                        {ctx(
-                          "step4b.title",
-                          "05. Customize Excursion or Party Upgrades",
-                        )}
-                      </label>
-                      <p className="text-xs text-slate-605 text-slate-600 leading-relaxed mt-1">
-                        {ctx(
-                          "step4b.desc",
-                          "Treat your party to deluxe offshore amusement additions, available for setup on any size catamarans:",
-                        )}
-                      </p>
+                {formStep === 6 && (() => {
+                  const getExtraImages = (key: string, fallbackUrl: string): string[] => {
+                    if (key === "cabinCount" && selectedVesselObj && selectedVesselObj.cabinImages && selectedVesselObj.cabinImages.length > 0) {
+                      return selectedVesselObj.cabinImages;
+                    }
+                    const found = STANDARD_EXTRAS.find((e) => e.key === key);
+                    if (found) {
+                      if (found.imageUrls && found.imageUrls.length > 0) return found.imageUrls;
+                      if (found.imageUrl) return [found.imageUrl];
+                    }
+                    return [fallbackUrl];
+                  };
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                        {/* Water Slider option */}
-                        <div
-                          onClick={() =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              addWaterSlider: !prev.addWaterSlider,
-                            }))
-                          }
-                          id="opt-water-slider"
-                          className={`p-4 rounded-xs border cursor-pointer select-none transition-all flex flex-col justify-between ${
-                            formData.addWaterSlider
-                              ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md"
-                              : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
-                          }`}
-                        >
-                          <div className="flex justify-between items-center w-full mb-3">
-                            <span className="text-xs font-bold uppercase tracking-wider font-sans">
-                              {ctx("upgrade.slider", "Book Water Slide")}
-                            </span>
-                            <input
-                              id="chk-water-slider"
-                              type="checkbox"
-                              checked={formData.addWaterSlider}
-                              onChange={() => {}} // handled by div click
-                              className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
-                            />
-                          </div>
-                          <p
-                            className={`text-[11px] leading-relaxed ${formData.addWaterSlider ? "text-slate-200" : "text-slate-500"}`}
-                          >
-                            {ctx(
-                              "upgrade.sliderDesc",
-                              "Inflatable high-thrills water slide letting guests plunge straight from the sun deck into crystal blue bays!",
-                            )}
-                          </p>
-                        </div>
+                  const waterSliderImgs = getExtraImages("waterSlider", "https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&w=400&q=80");
+                  const inflatablePoolImgs = getExtraImages("inflatablePool", "https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?auto=format&fit=crop&w=400&q=80");
+                  const cabinCountImgs = getExtraImages("cabinCount", "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=400&q=80");
+                  const gasBBQImgs = getExtraImages("gasBBQ", "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=400&q=80");
+                  const charcoalBBQImgs = getExtraImages("charcoalBBQ", "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=400&q=80");
+                  const karaokeImgs = getExtraImages("karaoke", "https://images.unsplash.com/photo-1516280440614-37939bbacd6a?auto=format&fit=crop&w=400&q=80");
+                  const longtailBoatImgs = getExtraImages("longtailBoat", "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=400&q=80");
+                  const mayaBayImgs = getExtraImages("mayaBayTicketAndLongtail", "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=400&q=80");
+                  const jamesBondImgs = getExtraImages("jamesBondTicket", "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80");
 
-                        {/* Inflatable swimming pool option */}
-                        <div
-                          onClick={() =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              addInflatablePool: !prev.addInflatablePool,
-                            }))
-                          }
-                          id="opt-inflatable-pool"
-                          className={`p-4 rounded-xs border cursor-pointer select-none transition-all flex flex-col justify-between ${
-                            formData.addInflatablePool
-                              ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md"
-                              : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
-                          }`}
-                        >
-                          <div className="flex justify-between items-center w-full mb-3">
-                            <span className="text-xs font-bold uppercase tracking-wider font-sans">
-                              {ctx("upgrade.pool", "Book Safe-Pool")}
-                            </span>
-                            <input
-                              id="chk-inflatable-pool"
-                              type="checkbox"
-                              checked={formData.addInflatablePool}
-                              onChange={() => {}} // handled by div click
-                              className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
-                            />
-                          </div>
-                          <p
-                            className={`text-[11px] leading-relaxed ${formData.addInflatablePool ? "text-slate-200" : "text-slate-500"}`}
-                          >
-                            {ctx(
-                              "upgrade.poolDesc",
-                              "Premium mesh-protected oceanic swimming enclosure. Swim secure, protected from jellyfishes next to deck.",
-                            )}
-                          </p>
-                        </div>
-
-                        {/* Cabin rental option */}
-                        {formData.vesselId === "the-best" && (
-                          <div className="p-4 rounded-xs border border-slate-200/90 bg-white flex flex-col justify-between">
-                            <div>
-                              <label className="block text-xs font-bold text-[#0F172A] uppercase tracking-wider font-sans mb-1 flex items-center gap-1">
-                                <Bed className="h-3.5 w-3.5" />{" "}
-                                {ctx("upgrade.cabin", "Book AC Cabins")}
-                              </label>
-                              <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
-                                {ctx(
-                                  "upgrade.cabinDesc",
-                                  "Select up to " +
-                                    (formData.charterDuration === "overnight"
-                                      ? "6"
-                                      : "5") +
-                                    " luxury double master cabins with dedicated private ensuite showers.",
-                                )}
-                              </p>
-                            </div>
-                            <select
-                              id="sel-cabin"
-                              value={formData.cabinCount}
-                              onChange={(e) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  cabinCount: parseInt(e.target.value),
-                                }))
-                              }
-                              className="w-full px-3 py-2 rounded-xs border border-slate-200 text-slate-800 text-xs focus:border-[#0F172A] focus:outline-hidden bg-white cursor-pointer"
-                            >
-                              <option value={0}>
-                                {ctx("upgrade.cabinSelect.none", "0 - None")}
-                              </option>
-                              {Array.from({
-                                length:
-                                  formData.charterDuration === "overnight"
-                                    ? 6
-                                    : 5,
-                              }).map((_, i) => (
-                                <option key={i + 1} value={i + 1}>
-                                  {i + 1} Cabins
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Divider */}
-                      <div className="border-t border-slate-200/90 my-4 pt-4" />
-
-                      {/* BBQ Grill Options */}
-                      <div className="space-y-3">
-                        <p className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider font-sans flex items-center gap-1.5">
-                          <Flame className="h-4 w-4 text-orange-500" />
+                  return (
+                    <div>
+                      {/* Dynamic upgrades picker as requested by user */}
+                      <div className="border bg-slate-50/50 rounded-xs p-6 space-y-4">
+                        <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-[0.2em] font-sans flex items-center gap-1.5">
+                          <Sparkles className="h-4 w-4 text-amber-500 fill-amber-300" />
                           {ctx(
-                            "upgrade.bbqGrillTitle",
-                            "Barbecue Grill Add-ons (Optional)",
+                            "step4b.title",
+                            "05. Customize Excursion or Party Upgrades",
+                          )}
+                        </label>
+                        <p className="text-xs text-slate-605 text-slate-600 leading-relaxed mt-1">
+                          {ctx(
+                            "step4b.desc",
+                            "Treat your party to deluxe offshore amusement additions, available for setup on any size catamarans:",
                           )}
                         </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* BBQ on Gas */}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                          {/* Water Slider option */}
                           <div
                             onClick={() =>
                               setFormData((prev) => ({
                                 ...prev,
-                                addGasBBQ: !prev.addGasBBQ,
+                                addWaterSlider: !prev.addWaterSlider,
                               }))
                             }
-                            id="opt-gas-bbq"
+                            id="opt-water-slider"
                             className={`p-4 rounded-xs border cursor-pointer select-none transition-all flex flex-col justify-between ${
-                              formData.addGasBBQ
+                              formData.addWaterSlider
                                 ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md"
                                 : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
                             }`}
                           >
-                            <div className="flex justify-between items-center w-full mb-2">
-                              <span className="text-xs font-bold uppercase tracking-wider font-sans">
-                                {ctx("upgrade.gasBBQ", "Barbecue on Gas")}
-                              </span>
-                              <input
-                                id="chk-gas-bbq"
-                                type="checkbox"
-                                checked={formData.addGasBBQ}
-                                onChange={() => {}} // handled by click
-                                className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
-                              />
-                            </div>
-                            <p
-                              className={`text-[11px] leading-relaxed ${formData.addGasBBQ ? "text-slate-200" : "text-slate-500"}`}
-                            >
-                              {ctx(
-                                "upgrade.gasBBQDesc",
-                                "High-efficiency propane gas BBQ grill set up on the deck. Perfect for clean, speedy grilling of meat or seafood. Available on all yachts!",
-                              )}
-                            </p>
-                          </div>
-
-                          {/* BBQ Charcoal - Only for The Best */}
-                          {selectedVesselObj.id === "the-best" ? (
-                            <div
-                              onClick={() =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  addCharcoalBBQ: !prev.addCharcoalBBQ,
-                                }))
-                              }
-                              id="opt-charcoal-bbq"
-                              className={`p-4 rounded-xs border cursor-pointer select-none transition-all flex flex-col justify-between ${
-                                formData.addCharcoalBBQ
-                                  ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md"
-                                  : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
-                              }`}
-                            >
-                              <div className="flex justify-between items-center w-full mb-2">
-                                <span className="text-xs font-bold uppercase tracking-wider font-sans flex items-center gap-1">
-                                  {ctx(
-                                    "upgrade.charcoalBBQ",
-                                    "👑 Charcoal Barbecue",
+                            <div>
+                              {waterSliderImgs.length > 0 && (
+                                <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                  <ImageWithFallback
+                                    referrerPolicy="no-referrer"
+                                    src={waterSliderImgs[0]}
+                                    alt="Water Slider"
+                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                  />
+                                  {waterSliderImgs.length > 1 && (
+                                    <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                      +{waterSliderImgs.length} Photos
+                                    </div>
                                   )}
+                                </div>
+                              )}
+                              <div className="flex justify-between items-center w-full mb-2">
+                                <span className="text-xs font-bold uppercase tracking-wider font-sans">
+                                  {ctx("upgrade.slider", "Book Water Slide")}
                                 </span>
                                 <input
-                                  id="chk-charcoal-bbq"
+                                  id="chk-water-slider"
                                   type="checkbox"
-                                  checked={formData.addCharcoalBBQ}
-                                  onChange={() => {}} // handled by click
+                                  checked={formData.addWaterSlider}
+                                  onChange={() => {}} // handled by div click
                                   className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
                                 />
                               </div>
                               <p
-                                className={`text-[11px] leading-relaxed ${formData.addCharcoalBBQ ? "text-slate-100" : "text-slate-500"}`}
+                                className={`text-[10px] leading-relaxed mb-2 ${formData.addWaterSlider ? "text-slate-200" : "text-slate-500"}`}
                               >
                                 {ctx(
-                                  "upgrade.charcoalBBQDesc",
-                                  "Premium wood-charcoal classic design grill on the catamaran stern deck. Imparts an authentic robust smoky flavor to your catch.",
+                                  "upgrade.sliderDesc",
+                                  "Inflatable high-thrills water slide letting guests plunge straight from the sun deck into crystal blue bays!",
                                 )}
                               </p>
                             </div>
-                          ) : (
-                            <div className="p-4 rounded-xs border border-slate-100 bg-slate-100/50 text-slate-400 select-none cursor-not-allowed flex flex-col justify-between">
+                          </div>
+
+                          {/* Inflatable swimming pool option */}
+                          <div
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                addInflatablePool: !prev.addInflatablePool,
+                              }))
+                            }
+                            id="opt-inflatable-pool"
+                            className={`p-4 rounded-xs border cursor-pointer select-none transition-all flex flex-col justify-between ${
+                              formData.addInflatablePool
+                                ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md"
+                                : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
+                            }`}
+                          >
+                            <div>
+                              {inflatablePoolImgs.length > 0 && (
+                                <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                  <ImageWithFallback
+                                    referrerPolicy="no-referrer"
+                                    src={inflatablePoolImgs[0]}
+                                    alt="Inflatable Pool"
+                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                  />
+                                  {inflatablePoolImgs.length > 1 && (
+                                    <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                      +{inflatablePoolImgs.length} Photos
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                               <div className="flex justify-between items-center w-full mb-2">
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1 opacity-70">
-                                  {ctx(
-                                    "upgrade.charcoalBBQLocked",
-                                    "🔒 Charcoal Barbecue",
-                                  )}
+                                <span className="text-xs font-bold uppercase tracking-wider font-sans">
+                                  {ctx("upgrade.pool", "Book Safe-Pool")}
                                 </span>
-                                <span className="text-[9px] font-bold text-slate-500 bg-white border border-slate-200 rounded-sm px-1.5 py-0.5 uppercase tracking-wide font-sans">
-                                  {ctx(
-                                    "upgrade.charcoalBBQTheBestOnly",
-                                    '"The Best" Only',
-                                  )}
-                                </span>
+                                <input
+                                  id="chk-inflatable-pool"
+                                  type="checkbox"
+                                  checked={formData.addInflatablePool}
+                                  onChange={() => {}} // handled by div click
+                                  className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
+                                />
                               </div>
-                              <p className="text-[11px] leading-relaxed text-slate-400 font-sans">
+                              <p
+                                className={`text-[10px] leading-relaxed mb-2 ${formData.addInflatablePool ? "text-slate-200" : "text-slate-500"}`}
+                              >
                                 {ctx(
-                                  "upgrade.charcoalBBQLimitDesc",
-                                  'Authentic coal-smoking barbecue setup. This exclusive premium feature is restricted to our flagship catamaran "The Best".',
+                                  "upgrade.poolDesc",
+                                  "Premium mesh-protected oceanic swimming enclosure. Swim secure, protected from jellyfishes next to deck.",
                                 )}
                               </p>
+                            </div>
+                          </div>
+
+                          {/* Cabin rental option */}
+                          {getVesselMaxCabins(formData.vesselId, formData.charterDuration) > 0 && (
+                            <div className="p-4 rounded-xs border border-slate-200/90 bg-white flex flex-col justify-between">
+                              <div>
+                                {cabinCountImgs.length > 0 && (
+                                  <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                    <ImageWithFallback
+                                      referrerPolicy="no-referrer"
+                                      src={cabinCountImgs[0]}
+                                      alt="AC Cabins"
+                                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                    />
+                                    {cabinCountImgs.length > 1 && (
+                                      <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                        +{cabinCountImgs.length} Photos
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <label className="block text-xs font-bold text-[#0F172A] uppercase tracking-wider font-sans mb-1 flex items-center gap-1">
+                                  <Bed className="h-3.5 w-3.5" />{" "}
+                                  {ctx("upgrade.cabin", "Book AC Cabins")}
+                                </label>
+                                <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
+                                  {ctx(
+                                    "upgrade.cabinDesc",
+                                    "Select up to " +
+                                      getVesselMaxCabins(formData.vesselId, formData.charterDuration) +
+                                      " luxury double master cabins with dedicated private ensuite showers.",
+                                  )}
+                                </p>
+                              </div>
+                              <select
+                                id="sel-cabin"
+                                value={formData.cabinCount}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    cabinCount: parseInt(e.target.value),
+                                  }))
+                                }
+                                className="w-full px-3 py-2 rounded-xs border border-slate-200 text-slate-800 text-xs focus:border-[#0F172A] focus:outline-hidden bg-white cursor-pointer"
+                              >
+                                <option value={0}>
+                                  {ctx("upgrade.cabinSelect.none", "0 - None")}
+                                </option>
+                                {Array.from({
+                                  length: getVesselMaxCabins(formData.vesselId, formData.charterDuration),
+                                }).map((_, i) => (
+                                  <option key={i + 1} value={i + 1}>
+                                    {i + 1} Cabins
+                                  </option>
+                                ))}
+                              </select>
                             </div>
                           )}
                         </div>
-                      </div>
+
+                        {/* Divider */}
+                        <div className="border-t border-slate-200/90 my-4 pt-4" />
+
+                        {/* BBQ Grill Options */}
+                        <div className="space-y-3">
+                          <p className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider font-sans flex items-center gap-1.5">
+                            <Flame className="h-4 w-4 text-orange-500" />
+                            {ctx(
+                              "upgrade.bbqGrillTitle",
+                              "Barbecue Grill Add-ons (Optional)",
+                            )}
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* BBQ on Gas */}
+                            <div
+                              onClick={() =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  addGasBBQ: !prev.addGasBBQ,
+                                }))
+                              }
+                              id="opt-gas-bbq"
+                              className={`p-4 rounded-xs border cursor-pointer select-none transition-all flex flex-col justify-between ${
+                                formData.addGasBBQ
+                                  ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md"
+                                  : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
+                              }`}
+                            >
+                              <div>
+                                {gasBBQImgs.length > 0 && (
+                                  <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                    <ImageWithFallback
+                                      referrerPolicy="no-referrer"
+                                      src={gasBBQImgs[0]}
+                                      alt="Gas BBQ"
+                                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                    />
+                                    {gasBBQImgs.length > 1 && (
+                                      <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                        +{gasBBQImgs.length} Photos
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="flex justify-between items-center w-full mb-2">
+                                  <span className="text-xs font-bold uppercase tracking-wider font-sans">
+                                    {ctx("upgrade.gasBBQ", "Barbecue on Gas")}
+                                  </span>
+                                  <input
+                                    id="chk-gas-bbq"
+                                    type="checkbox"
+                                    checked={formData.addGasBBQ}
+                                    onChange={() => {}} // handled by click
+                                    className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
+                                  />
+                                </div>
+                                <p
+                                  className={`text-[10px] leading-relaxed mb-2 ${formData.addGasBBQ ? "text-slate-200" : "text-slate-500"}`}
+                                >
+                                  {ctx(
+                                    "upgrade.gasBBQDesc",
+                                    "High-efficiency propane gas BBQ grill set up on the deck. Perfect for clean, speedy grilling of meat or seafood. Available on all yachts!",
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* BBQ Charcoal - Only for The Best */}
+                            {selectedVesselObj.id === "the-best" ? (
+                              <div
+                                onClick={() =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    addCharcoalBBQ: !prev.addCharcoalBBQ,
+                                  }))
+                                }
+                                id="opt-charcoal-bbq"
+                                className={`p-4 rounded-xs border cursor-pointer select-none transition-all flex flex-col justify-between ${
+                                  formData.addCharcoalBBQ
+                                    ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md"
+                                    : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
+                                }`}
+                              >
+                                <div>
+                                  {charcoalBBQImgs.length > 0 && (
+                                    <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                      <ImageWithFallback
+                                        referrerPolicy="no-referrer"
+                                        src={charcoalBBQImgs[0]}
+                                        alt="Charcoal BBQ"
+                                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                      />
+                                      {charcoalBBQImgs.length > 1 && (
+                                        <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                          +{charcoalBBQImgs.length} Photos
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between items-center w-full mb-2">
+                                    <span className="text-xs font-bold uppercase tracking-wider font-sans flex items-center gap-1">
+                                      {ctx(
+                                        "upgrade.charcoalBBQ",
+                                        "👑 Charcoal Barbecue",
+                                      )}
+                                    </span>
+                                    <input
+                                      id="chk-charcoal-bbq"
+                                      type="checkbox"
+                                      checked={formData.addCharcoalBBQ}
+                                      onChange={() => {}} // handled by click
+                                      className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
+                                    />
+                                  </div>
+                                  <p
+                                    className={`text-[10px] leading-relaxed mb-2 ${formData.addCharcoalBBQ ? "text-slate-100" : "text-slate-500"}`}
+                                  >
+                                    {ctx(
+                                      "upgrade.charcoalBBQDesc",
+                                      "Premium wood-charcoal classic design grill on the catamaran stern deck. Imparts an authentic robust smoky flavor to your catch.",
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-4 rounded-xs border border-slate-100 bg-slate-100/50 text-slate-400 select-none cursor-not-allowed flex flex-col justify-between">
+                                <div className="flex justify-between items-center w-full mb-2">
+                                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 font-sans flex items-center gap-1 opacity-70">
+                                    {ctx(
+                                      "upgrade.charcoalBBQLocked",
+                                      "🔒 Charcoal Barbecue",
+                                    )}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-500 bg-white border border-slate-200 rounded-sm px-1.5 py-0.5 uppercase tracking-wide font-sans">
+                                    {ctx(
+                                      "upgrade.charcoalBBQTheBestOnly",
+                                      '"The Best" Only',
+                                    )}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] leading-relaxed text-slate-400 font-sans">
+                                  {ctx(
+                                    "upgrade.charcoalBBQLimitDesc",
+                                    'Authentic coal-smoking barbecue setup. This exclusive premium feature is restricted to our flagship catamaran "The Best".',
+                                  )}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
 
                       {/* Divider */}
                       <div className="border-t border-slate-200/90 my-4 pt-4" />
@@ -7052,6 +7183,24 @@ export default function BookingForm({
                           {/* Extra Watermelon Choice */}
                           <div className="p-4 rounded-xs border border-slate-200/90 bg-white flex flex-col justify-between">
                             <div>
+                              {(() => {
+                                const watermelonImgs = getExtraImages("extraWatermelon", "https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=400&q=80");
+                                return watermelonImgs.length > 0 && (
+                                  <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                    <ImageWithFallback
+                                      referrerPolicy="no-referrer"
+                                      src={watermelonImgs[0]}
+                                      alt="Watermelon"
+                                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                    />
+                                    {watermelonImgs.length > 1 && (
+                                      <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                        +{watermelonImgs.length} Photos
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <label className="block text-xs font-bold text-[#0F172A] uppercase tracking-wider font-sans mb-1">
                                 {ctx(
                                   "upgrade.watermelon",
@@ -7123,6 +7272,24 @@ export default function BookingForm({
                           {/* Extra Snacks Option */}
                           <div className="p-4 rounded-xs border border-slate-200/90 bg-white flex flex-col justify-between">
                             <div>
+                              {(() => {
+                                const snacksImgs = getExtraImages("extraSnack", "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=400&q=80");
+                                return snacksImgs.length > 0 && (
+                                  <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                    <ImageWithFallback
+                                      referrerPolicy="no-referrer"
+                                      src={snacksImgs[0]}
+                                      alt="Snacks"
+                                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                    />
+                                    {snacksImgs.length > 1 && (
+                                      <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                        +{snacksImgs.length} Photos
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <label className="block text-xs font-bold text-[#0F172A] uppercase tracking-wider font-sans mb-1">
                                 {ctx("upgrade.snacks", "🍿 Extra Snacks")}
                               </label>
@@ -7172,6 +7339,24 @@ export default function BookingForm({
                           {/* Extra Pineapple Option */}
                           <div className="p-4 rounded-xs border border-slate-200/90 bg-white flex flex-col justify-between">
                             <div>
+                              {(() => {
+                                const pineappleImgs = getExtraImages("extraPineapple", "https://images.unsplash.com/photo-1550258114-28b3a82b2397?auto=format&fit=crop&w=400&q=80");
+                                return pineappleImgs.length > 0 && (
+                                  <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                    <ImageWithFallback
+                                      referrerPolicy="no-referrer"
+                                      src={pineappleImgs[0]}
+                                      alt="Pineapple"
+                                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                    />
+                                    {pineappleImgs.length > 1 && (
+                                      <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                        +{pineappleImgs.length} Photos
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <label className="block text-xs font-bold text-[#0F172A] uppercase tracking-wider font-sans mb-1">
                                 {ctx("upgrade.pineapple", "🍍 Extra Pineapple")}
                               </label>
@@ -7277,29 +7462,46 @@ export default function BookingForm({
                                   : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
                               }`}
                             >
-                              <div className="flex justify-between items-center w-full mb-2">
-                                <span className="text-xs font-bold uppercase tracking-wider font-sans flex items-center gap-1.5">
-                                  {ctx(
-                                    "upgrade.karaoke",
-                                    "🎵 Professional Onboard Karaoke System",
-                                  )}
-                                </span>
-                                <input
-                                  id="chk-karaoke"
-                                  type="checkbox"
-                                  checked={formData.addKaraoke}
-                                  onChange={() => {}} // handled by click
-                                  className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
-                                />
-                              </div>
-                              <p
-                                className={`text-[11px] leading-relaxed ${formData.addKaraoke ? "text-slate-200" : "text-slate-500"}`}
-                              >
-                                {ctx(
-                                  "upgrade.karaokeDesc",
-                                  "Multi-speaker surround sound system with massive flat screen, catalog containing 50,000+ files, and wireless microphones.",
+                              <div>
+                                {karaokeImgs.length > 0 && (
+                                  <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                    <ImageWithFallback
+                                      referrerPolicy="no-referrer"
+                                      src={karaokeImgs[0]}
+                                      alt="Karaoke"
+                                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                    />
+                                    {karaokeImgs.length > 1 && (
+                                      <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                        +{karaokeImgs.length} Photos
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
-                              </p>
+                                <div className="flex justify-between items-center w-full mb-2">
+                                  <span className="text-xs font-bold uppercase tracking-wider font-sans flex items-center gap-1.5">
+                                    {ctx(
+                                      "upgrade.karaoke",
+                                      "🎵 Professional Onboard Karaoke System",
+                                    )}
+                                  </span>
+                                  <input
+                                    id="chk-karaoke"
+                                    type="checkbox"
+                                    checked={formData.addKaraoke}
+                                    onChange={() => {}} // handled by click
+                                    className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
+                                  />
+                                </div>
+                                <p
+                                  className={`text-[10px] leading-relaxed mb-2 ${formData.addKaraoke ? "text-slate-200" : "text-slate-500"}`}
+                                >
+                                  {ctx(
+                                    "upgrade.karaokeDesc",
+                                    "Multi-speaker surround sound system with massive flat screen, catalog containing 50,000+ files, and wireless microphones.",
+                                  )}
+                                </p>
+                              </div>
                             </div>
                           ) : (
                             <div className="p-4 rounded-xs border border-slate-100 bg-slate-100/50 text-slate-400 select-none cursor-not-allowed flex flex-col justify-between">
@@ -7356,29 +7558,46 @@ export default function BookingForm({
                                 : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
                             }`}
                           >
-                            <div className="flex justify-between items-center w-full mb-2">
-                              <span className="text-xs font-bold uppercase tracking-wider font-sans">
-                                {ctx(
-                                  "upgrade.privateLongtail",
-                                  "⚓ Private Long Tail Boat",
-                                )}
-                              </span>
-                              <input
-                                id="chk-longtail-boat"
-                                type="checkbox"
-                                checked={formData.addLongtailBoat}
-                                onChange={() => {}} // handled by click
-                                className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
-                              />
-                            </div>
-                            <p
-                              className={`text-[11px] leading-relaxed ${formData.addLongtailBoat ? "text-slate-200" : "text-slate-500"}`}
-                            >
-                              {ctx(
-                                "upgrade.privateLongtailDesc",
-                                "Private local wooden long tail boat charter on any of the selected islands. Perfect for close-up reef access, shallow coral runs, and private beach drop-offs.",
+                            <div>
+                              {longtailBoatImgs.length > 0 && (
+                                <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                  <ImageWithFallback
+                                    referrerPolicy="no-referrer"
+                                    src={longtailBoatImgs[0]}
+                                    alt="Private Longtail Boat"
+                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                  />
+                                  {longtailBoatImgs.length > 1 && (
+                                    <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                      +{longtailBoatImgs.length} Photos
+                                    </div>
+                                  )}
+                                </div>
                               )}
-                            </p>
+                              <div className="flex justify-between items-center w-full mb-2">
+                                <span className="text-xs font-bold uppercase tracking-wider font-sans">
+                                  {ctx(
+                                    "upgrade.privateLongtail",
+                                    "⚓ Private Long Tail Boat",
+                                  )}
+                                </span>
+                                <input
+                                  id="chk-longtail-boat"
+                                  type="checkbox"
+                                  checked={formData.addLongtailBoat}
+                                  onChange={() => {}} // handled by click
+                                  className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
+                                />
+                              </div>
+                              <p
+                                className={`text-[10px] leading-relaxed mb-2 ${formData.addLongtailBoat ? "text-slate-200" : "text-slate-500"}`}
+                              >
+                                {ctx(
+                                  "upgrade.privateLongtailDesc",
+                                  "Private local wooden long tail boat charter on any of the selected islands. Perfect for close-up reef access, shallow coral runs, and private beach drop-offs.",
+                                )}
+                              </p>
+                            </div>
                           </div>
 
                           {/* Option 2: Maya Bay and longtail boat tickets */}
@@ -7397,29 +7616,46 @@ export default function BookingForm({
                                 : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
                             }`}
                           >
-                            <div className="flex justify-between items-center w-full mb-2">
-                              <span className="text-xs font-bold uppercase tracking-wider font-sans">
-                                {ctx(
-                                  "upgrade.mayaBayTicket",
-                                  "🎟️ Maya Bay Tour & Ticket",
-                                )}
-                              </span>
-                              <input
-                                id="chk-mayabay-ticket"
-                                type="checkbox"
-                                checked={formData.addMayaBayTicketAndLongtail}
-                                onChange={() => {}} // handled by click
-                                className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
-                              />
-                            </div>
-                            <p
-                              className={`text-[11px] leading-relaxed ${formData.addMayaBayTicketAndLongtail ? "text-slate-200" : "text-slate-500"}`}
-                            >
-                              {ctx(
-                                "upgrade.mayaBayTicketDesc",
-                                "Guaranteed park entry tickets to Maya Beach combined with an authentic wooden longtail boat cruise into Pileh Lagoon's transparent turquoise waters.",
+                            <div>
+                              {mayaBayImgs.length > 0 && (
+                                <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                  <ImageWithFallback
+                                    referrerPolicy="no-referrer"
+                                    src={mayaBayImgs[0]}
+                                    alt="Maya Bay Ticket & Longtail"
+                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                  />
+                                  {mayaBayImgs.length > 1 && (
+                                    <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                      +{mayaBayImgs.length} Photos
+                                    </div>
+                                  )}
+                                </div>
                               )}
-                            </p>
+                              <div className="flex justify-between items-center w-full mb-2">
+                                <span className="text-xs font-bold uppercase tracking-wider font-sans">
+                                  {ctx(
+                                    "upgrade.mayaBayTicket",
+                                    "🎟️ Maya Bay Tour & Ticket",
+                                  )}
+                                </span>
+                                <input
+                                  id="chk-mayabay-ticket"
+                                  type="checkbox"
+                                  checked={formData.addMayaBayTicketAndLongtail}
+                                  onChange={() => {}} // handled by click
+                                  className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
+                                />
+                              </div>
+                              <p
+                                className={`text-[10px] leading-relaxed mb-2 ${formData.addMayaBayTicketAndLongtail ? "text-slate-200" : "text-slate-500"}`}
+                              >
+                                {ctx(
+                                  "upgrade.mayaBayTicketDesc",
+                                  "Guaranteed park entry tickets to Maya Beach combined with an authentic wooden longtail boat cruise into Pileh Lagoon's transparent turquoise waters.",
+                                )}
+                              </p>
+                            </div>
                           </div>
 
                           {/* Option 3: James Bond Island Tour Ticket */}
@@ -7437,29 +7673,46 @@ export default function BookingForm({
                                 : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
                             }`}
                           >
-                            <div className="flex justify-between items-center w-full mb-2">
-                              <span className="text-xs font-bold uppercase tracking-wider font-sans">
-                                {ctx(
-                                  "upgrade.jamesBondTicket",
-                                  "🎬 James Bond Tour Ticket",
-                                )}
-                              </span>
-                              <input
-                                id="chk-jamesbond-ticket"
-                                type="checkbox"
-                                checked={formData.addJamesBondTicket}
-                                onChange={() => {}} // handled by click
-                                className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
-                              />
-                            </div>
-                            <p
-                              className={`text-[11px] leading-relaxed ${formData.addJamesBondTicket ? "text-slate-200" : "text-slate-500"}`}
-                            >
-                              {ctx(
-                                "upgrade.jamesBondTicketDesc",
-                                "Guaranteed national park admission tickets to Ao Phang Nga National Park (James Bond Island) with sea canoeing around mystic caves.",
+                            <div>
+                              {jamesBondImgs.length > 0 && (
+                                <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0">
+                                  <ImageWithFallback
+                                    referrerPolicy="no-referrer"
+                                    src={jamesBondImgs[0]}
+                                    alt="James Bond Tour Ticket"
+                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                  />
+                                  {jamesBondImgs.length > 1 && (
+                                    <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                      +{jamesBondImgs.length} Photos
+                                    </div>
+                                  )}
+                                </div>
                               )}
-                            </p>
+                              <div className="flex justify-between items-center w-full mb-2">
+                                <span className="text-xs font-bold uppercase tracking-wider font-sans">
+                                  {ctx(
+                                    "upgrade.jamesBondTicket",
+                                    "🎬 James Bond Tour Ticket",
+                                  )}
+                                </span>
+                                <input
+                                  id="chk-jamesbond-ticket"
+                                  type="checkbox"
+                                  checked={formData.addJamesBondTicket}
+                                  onChange={() => {}} // handled by click
+                                  className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer"
+                                />
+                              </div>
+                              <p
+                                className={`text-[10px] leading-relaxed mb-2 ${formData.addJamesBondTicket ? "text-slate-200" : "text-slate-500"}`}
+                              >
+                                {ctx(
+                                  "upgrade.jamesBondTicketDesc",
+                                  "Guaranteed national park admission tickets to Ao Phang Nga National Park (James Bond Island) with sea canoeing around mystic caves.",
+                                )}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -7715,6 +7968,24 @@ export default function BookingForm({
                         </p>
                         {isVisitingKohKhaiNok ? (
                           <div className="p-4 rounded-xs border border-slate-200 bg-white space-y-4">
+                            {(() => {
+                              const jetskiImgs = getExtraImages("jetski", "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=600&q=80");
+                              return jetskiImgs.length > 0 && (
+                                <div className="w-full h-36 overflow-hidden rounded-xs relative shrink-0">
+                                  <ImageWithFallback
+                                    referrerPolicy="no-referrer"
+                                    src={jetskiImgs[0]}
+                                    alt="Jet Ski"
+                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                  />
+                                  {jetskiImgs.length > 1 && (
+                                    <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                      +{jetskiImgs.length} Photos
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                               <div className="flex items-center gap-3">
                                 <input
@@ -7745,7 +8016,7 @@ export default function BookingForm({
                                 </div>
                               </div>
                             </div>
-
+ 
                             {formData.addJetski && (
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
                                 <div>
@@ -8291,6 +8562,112 @@ export default function BookingForm({
                         </div>
                       </div>
 
+                      {/* Custom & Premium Extras Section */}
+                      {(() => {
+                        const hardcodedKeys = ["waterSlider", "inflatablePool", "cabinCount", "gasBBQ", "charcoalBBQ", "extraWatermelon", "extraSnack", "extraPineapple", "karaoke", "longtailBoat", "mayaBayTicketAndLongtail", "jamesBondTicket", "jetski", "minibusTransfer", "guide", "fishingGear", "fishingHandlines", "bartender", "birthdayCake", "champagne", "partyDecorations", "flowerBouquet", "photographer", "droneVideography", "dj", "sashimi", "redWine", "whiteWine", "beer"];
+                        const customExtras = STANDARD_EXTRAS.filter(extra => !hardcodedKeys.includes(extra.key));
+                        
+                        if (customExtras.length === 0) return null;
+
+                        return (
+                          <div className="space-y-4 pt-4 border-t border-slate-200/90 mt-4">
+                            <p className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider font-sans flex items-center gap-1.5">
+                              <Sparkles className="h-4 w-4 text-emerald-600 fill-emerald-100" />
+                              {ctx(
+                                "upgrade.customExtrasTitle",
+                                "✨ Additional Custom & Premium Extras",
+                              )}
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {customExtras.map((extra) => {
+                                const isSelected = formData.customAddonKeys?.includes(extra.key) || false;
+                                const displayPrice = extra.defaultPrice || 0;
+                                
+                                // Carousel / Image gallery for custom extras
+                                const images = extra.imageUrls && extra.imageUrls.length > 0 
+                                  ? extra.imageUrls 
+                                  : extra.imageUrl 
+                                    ? [extra.imageUrl] 
+                                    : [];
+
+                                return (
+                                  <div
+                                    key={extra.key}
+                                    onClick={() => {
+                                      const current = formData.customAddonKeys || [];
+                                      const updated = isSelected 
+                                        ? current.filter(k => k !== extra.key) 
+                                        : [...current, extra.key];
+                                      setFormData(prev => ({ ...prev, customAddonKeys: updated }));
+                                    }}
+                                    className={`p-4 rounded-xs border cursor-pointer select-none transition-all flex flex-col justify-between ${
+                                      isSelected
+                                        ? "bg-[#0F172A] text-white border-[#0F172A] shadow-md"
+                                        : "bg-white text-[#0F172A] border-slate-200/90 hover:border-[#0F172A]/50"
+                                    }`}
+                                  >
+                                    <div>
+                                      {images.length > 0 && (
+                                        <div className="w-full h-24 mb-3 overflow-hidden rounded-sm relative shrink-0 bg-slate-100">
+                                          {images.length === 1 ? (
+                                            <ImageWithFallback
+                                              referrerPolicy="no-referrer"
+                                              src={images[0]}
+                                              alt={extra.label}
+                                              className="w-full h-full object-cover transition-transform duration-500"
+                                            />
+                                          ) : (
+                                            // Split or first grid view with photos count banner
+                                            <div className="w-full h-full relative">
+                                              <ImageWithFallback
+                                                referrerPolicy="no-referrer"
+                                                src={images[0]}
+                                                alt={extra.label}
+                                                className="w-full h-full object-cover transition-transform duration-500"
+                                              />
+                                              <div className="absolute bottom-1 right-1 bg-black/70 text-[8px] font-bold text-white px-1 py-0.5 rounded-sm uppercase tracking-wider">
+                                                +{images.length} Photos
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                      
+                                      <div className="flex justify-between items-start w-full gap-1 mb-1">
+                                        <span className="text-xs font-bold uppercase tracking-wider font-sans block max-w-[85%]">
+                                          {extra.label}
+                                        </span>
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={() => {}} // Handled by div container click
+                                          className="rounded-sm accent-emerald-500 h-3.5 w-3.5 cursor-pointer mt-0.5 shrink-0"
+                                        />
+                                      </div>
+                                      
+                                      {extra.description && (
+                                        <p className={`text-[10px] leading-relaxed mb-3 ${isSelected ? "text-slate-350" : "text-slate-500"}`}>
+                                          {extra.description}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <div className="flex justify-between items-center w-full border-t border-slate-100/10 pt-2 mt-auto">
+                                      <span className={`text-[9px] font-bold uppercase tracking-wider ${isSelected ? "text-emerald-400" : "text-emerald-700"}`}>
+                                        Premium Option
+                                      </span>
+                                      <span className="font-mono text-[10px] font-bold">
+                                        {displayPrice.toLocaleString()} THB
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {isAgentOverride && (
                         <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-950 flex justify-between items-center shadow-sm">
                           <div className="font-bold flex items-center gap-1.5 uppercase tracking-widest text-[9px]">
@@ -8305,8 +8682,9 @@ export default function BookingForm({
                                   u.name === "Destination Surcharge" ||
                                   u.name === "Agency Custom Upgrades & Fees" ||
                                   u.name === "Custom Destination Pier Fees"
-                                )
+                                ) {
                                   return sum;
+                                }
                                 return sum + u.price;
                               }, 0)
                               .toLocaleString()}{" "}
@@ -8316,7 +8694,8 @@ export default function BookingForm({
                       )}
                     </div>
                   </div>
-                )}
+                );
+              })()}
 
                 {formStep === 5 && (
                   <div>

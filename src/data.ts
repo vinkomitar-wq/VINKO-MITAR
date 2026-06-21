@@ -1,9 +1,9 @@
-import { Catamaran, Pier, Destination } from "./types";
+import { Catamaran, Pier, Destination, StandardExtra } from "./types";
 
 export const GLOBAL_ROUTE_PRICING: Record<string, number> = {};
 export const GLOBAL_EXTRA_PRICING: Record<string, number> = {};
 
-export const STANDARD_EXTRAS = [
+export const STANDARD_EXTRAS: StandardExtra[] = [
   {
     key: "waterSlider",
     label: "Inflatable Sea Water Slider",
@@ -76,6 +76,7 @@ export const CATAMARANS: Catamaran[] = [
       "https://images.unsplash.com/photo-1605281317010-fe5fed93a4c6?auto=format&fit=crop&w=800&q=80",
     ],
     capacity: 45,
+    videoUrl: "https://www.youtube.com/watch?v=scg136qDclY",
     length: "60 ft (18.3m)",
     cabins: 6,
     bathrooms: 6,
@@ -139,6 +140,7 @@ export const CATAMARANS: Catamaran[] = [
       "https://images.unsplash.com/photo-1569263979104-865ab7cd8d13?auto=format&fit=crop&w=800&q=80",
     ],
     capacity: 45,
+    videoUrl: "https://www.youtube.com/watch?v=kY73zCiz7lQ",
     length: "55 ft (16.8m)",
     cabins: 4,
     bathrooms: 3,
@@ -184,6 +186,7 @@ export const CATAMARANS: Catamaran[] = [
     image:
       "https://images.unsplash.com/photo-1605281317010-fe5ffe798166?auto=format&fit=crop&w=800&q=80",
     capacity: 40,
+    videoUrl: "https://www.youtube.com/watch?v=rJ1zXb8C1fQ",
     length: "47 ft (14.3m)",
     cabins: 4,
     bathrooms: 2,
@@ -599,6 +602,7 @@ export const DESTINATIONS: Destination[] = [
     imageUrl:
       "https://images.unsplash.com/photo-1534008897995-27a23e859048?auto=format&fit=crop&q=80&w=800",
     imagePlaceholder: "bg-[#0F172A]/5 text-[#0F172A] border-[#0F172A]/10",
+    videoUrl: "https://youtu.be/Va90C0J5Oxc?si=dSBZC1T8CyxECfRm",
   },
   {
     id: "koh-hong",

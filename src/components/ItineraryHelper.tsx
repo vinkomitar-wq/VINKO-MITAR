@@ -22,8 +22,10 @@ import {
   ChevronRight,
   Maximize2,
   Minimize2,
+  FileDown,
 } from "lucide-react";
-import { DESTINATIONS, PIERS } from "../data";
+import { DESTINATIONS, PIERS, CATAMARANS } from "../data";
+import { generateItineraryPdf } from "../lib/pdfGenerator";
 import { Destination } from "../types";
 import { useLanguage } from "../LanguageContext";
 import AIPlanner from "./AIPlanner";
@@ -677,6 +679,103 @@ export default function ItineraryHelper({
     }
   };
 
+  const handleExportPDF = () => {
+    if (sequence.length === 0) {
+      alert("Please add at least one destination to generate a customized PDF itinerary!");
+      return;
+    }
+
+    const seqTimelineData = getSequenceTimelineEvents();
+    const cat = CATAMARANS.find((c) => c.id === currentVesselId);
+
+    // Custom estimated prices for Page 2
+    let estimatePrice = 45000;
+    if (currentVesselId === "the-best") {
+      estimatePrice = timelineDuration === "fullday" ? 85000 : 55000;
+    } else if (currentVesselId === "namaste") {
+      estimatePrice = timelineDuration === "fullday" ? 75000 : 48000;
+    } else {
+      estimatePrice = timelineDuration === "fullday" ? 65000 : 42000;
+    }
+
+    const stops = seqTimelineData.events.map((ev, idx) => {
+      let destId = "island";
+      if (idx === 0) {
+        destId = effectiveStartPier;
+      } else if (idx === seqTimelineData.events.length - 1) {
+        destId = effectiveEndPier;
+      } else {
+        destId = sequence[idx - 1] || "island";
+      }
+
+      return {
+        destinationId: destId,
+        name: ev.location || ev.title,
+        activity: ev.description || "Sightseeing and beach exploration.",
+        durationHours:
+          idx === 0 || idx === seqTimelineData.events.length - 1
+            ? 0.5
+            : seqTimelineData.leisureTimePerIsland,
+        timeOfDay: ev.time,
+      };
+    });
+
+    const enrichedItinerary = {
+      recommendedVesselId: currentVesselId,
+      vesselReasoning: `Specially selected ${cat?.name || "premium catamaran"} designed for excellent speed (${seqTimelineData.speedKnots} kts) of navigation and spacious party / leisure decks.`,
+      recommendedPierId:
+        PIERS.find((p) => p.id === effectiveStartPier)?.name || "Chalong Pier",
+      routeTitle: "Custom Phuket Archipelago Hopping Route Planner",
+      fullDescription:
+        "A fully personalized private catamaran voyage meticulously mapped around custom destination timings, sailing distances, and client interest points.",
+      stops: stops,
+      totalEstimatedHours: seqTimelineData.totalDuration,
+      insiderTips: [
+        "Bring waterproof cameras & sun protection for spectacular beach-walk photos.",
+        "Our onboard steward will provide fresh premium iced towels after each island swim.",
+        "Custom culinary setups (such as tropical fresh fruits and authentic Thai lunch) are served on transit legs.",
+      ],
+      vesselNameText: cat
+        ? `${cat.name} (${cat.model})`
+        : currentVesselId.toUpperCase(),
+      bookingReference: "PLN-" + Math.floor(1000 + Math.random() * 9000),
+      agentName: "Phuket Yacht Charters Representative",
+      customerName: "Charter Guest Explorer",
+      customerPhone: "+66 Dynamic Route Planner",
+      customerEmail: "custom-route@phuket-charters.com",
+      charterDate: "Pending Reservation Setup",
+      guestCount: String(cat?.capacity || 20),
+      duration:
+        timelineDuration === "fullday" ? "full-day" : "half-day-afternoon",
+      cabinCount: cat?.cabins || 1,
+      routePriceNum: estimatePrice,
+      addonsPriceNum: 0,
+      taxAmountNum: Math.round(estimatePrice * 0.07),
+      totalIncTaxNum: estimatePrice,
+      agentPriceStr: `THB ${estimatePrice.toLocaleString()}`,
+      vesselSpecs: cat
+        ? {
+            length: cat.length,
+            capacity: cat.capacity,
+            cabins: cat.cabins,
+            bathrooms: cat.bathrooms,
+          }
+        : undefined,
+    };
+
+    try {
+      const doc = generateItineraryPdf(enrichedItinerary);
+      doc.save(
+        `Phuket_Custom_Itinerary_${currentVesselId}_${timelineDuration}.pdf`,
+      );
+    } catch (err) {
+      console.error("Failed to generate custom sequence PDF:", err);
+      alert(
+        "There was an issue compiling your bespoke PDF. Please verify your selected stops and try again.",
+      );
+    }
+  };
+
   const getSequenceTimelineEvents = () => {
     const events = [];
 
@@ -1236,34 +1335,52 @@ export default function ItineraryHelper({
                 </div>
 
                 {/* Grid image layout */}
-                {selectedDestinationDetails.imageUrls &&
-                selectedDestinationDetails.imageUrls.length === 2 ? (
-                  <div className="grid grid-cols-2 gap-3 h-36">
-                    <div className="w-full h-full rounded-sm overflow-hidden bg-slate-100 border border-slate-200">
-                      <ImageWithFallback
-                        referrerPolicy="no-referrer"
-                        src={selectedDestinationDetails.imageUrls[0]}
-                        alt={selectedDestinationDetails.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="w-full h-full rounded-sm overflow-hidden bg-slate-100 border border-slate-200">
-                      <ImageWithFallback
-                        referrerPolicy="no-referrer"
-                        src={selectedDestinationDetails.imageUrls[1]}
-                        alt={selectedDestinationDetails.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </div>
-                ) : selectedDestinationDetails.imageUrl ? (
-                  <div className="w-full h-36 rounded-sm overflow-hidden bg-slate-100 border border-slate-200">
-                    <ImageWithFallback
-                      referrerPolicy="no-referrer"
-                      src={selectedDestinationDetails.imageUrl}
-                      alt={selectedDestinationDetails.name}
-                      className="w-full h-full object-cover"
-                    />
+                {(selectedDestinationDetails.videoUrl || (selectedDestinationDetails.imageUrl || selectedDestinationDetails.imageUrls)) ? (
+                  <div className="space-y-3">
+                    {/* Video if exists */}
+                    {selectedDestinationDetails.videoUrl && (
+                      <div className="w-full h-48 rounded-sm overflow-hidden bg-slate-900 border border-slate-200">
+                        <iframe 
+                          src={selectedDestinationDetails.videoUrl.replace("youtu.be/", "youtube.com/embed/").replace("watch?v=", "embed/")}
+                          className="w-full h-full"
+                          title="Destination Video"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Images if exist */}
+                    {selectedDestinationDetails.imageUrls &&
+                    selectedDestinationDetails.imageUrls.length === 2 ? (
+                      <div className="grid grid-cols-2 gap-3 h-36">
+                        <div className="w-full h-full rounded-sm overflow-hidden bg-slate-100 border border-slate-200">
+                          <ImageWithFallback
+                            referrerPolicy="no-referrer"
+                            src={selectedDestinationDetails.imageUrls[0]}
+                            alt={selectedDestinationDetails.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="w-full h-full rounded-sm overflow-hidden bg-slate-100 border border-slate-200">
+                          <ImageWithFallback
+                            referrerPolicy="no-referrer"
+                            src={selectedDestinationDetails.imageUrls[1]}
+                            alt={selectedDestinationDetails.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    ) : selectedDestinationDetails.imageUrl ? (
+                      <div className="w-full h-36 rounded-sm overflow-hidden bg-slate-100 border border-slate-200">
+                        <ImageWithFallback
+                          referrerPolicy="no-referrer"
+                          src={selectedDestinationDetails.imageUrl}
+                          alt={selectedDestinationDetails.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -1923,6 +2040,16 @@ export default function ItineraryHelper({
 
                   {/* Action Buttons: Auto-synchronized and Proceed control */}
                   <div className="mt-8 pt-6 border-t border-slate-200/60 flex flex-col gap-3">
+                    <button
+                      type="button"
+                      id="btn-export-itinerary-pdf"
+                      onClick={handleExportPDF}
+                      className="w-full py-3 bg-[#0F172A] hover:bg-slate-850 text-white font-sans font-bold text-[10.5px] sm:text-xs uppercase tracking-[0.12em] flex items-center justify-center gap-2 cursor-pointer shadow-md rounded-xs transition-all duration-300 border border-slate-800/10"
+                    >
+                      <FileDown className="h-4 w-4 text-emerald-450 shrink-0" />
+                      <span>Export Professional Itinerary (PDF) ✨</span>
+                    </button>
+
                     <button
                       type="button"
                       id="btn-lock-custom-route-complete"

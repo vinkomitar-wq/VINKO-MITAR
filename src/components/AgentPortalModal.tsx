@@ -839,7 +839,15 @@ export default function AgentPortalModal({
     setUploadProgress(true);
     setGdriveError(null);
     try {
-      const blob = await generateAgentPdfQuote(proposal, currentAgent, true);
+      const pdfData = {
+        clientName: proposal.clientName || "Valued Customer",
+        charterDate: proposal.charterDate || "",
+        vesselName: proposal.vesselId1 || "Premium Catamaran",
+        price: proposal.price1 || "Contact Broker",
+        notes: proposal.notes || "Official proposal.",
+      };
+      const doc = generateAgentPdfQuote(pdfData);
+      const blob = doc.output("blob");
       const clientNameClean = (proposal.clientName || "quote")
         .toLowerCase()
         .replace(/\s+/g, "_");
@@ -1396,7 +1404,15 @@ export default function AgentPortalModal({
           pObj = savedProposals[0];
         }
         if (pObj) {
-          generateAgentPdfQuote(pObj, currentAgent);
+          const pdfData = {
+            clientName: pObj.clientName || "Valued Customer",
+            charterDate: pObj.charterDate || "",
+            vesselName: pObj.vesselId1 || "Premium Catamaran",
+            price: pObj.price1 || "Contact Broker",
+            notes: pObj.notes || "Official proposal.",
+          };
+          const doc = generateAgentPdfQuote(pdfData);
+          doc.save(`charter_quote_${(pObj.clientName || "guest").toLowerCase().replace(/\s+/g, '_')}.pdf`);
         } else {
           console.warn("Could not find any proposals to generate PDF from.");
         }
@@ -4773,15 +4789,18 @@ export default function AgentPortalModal({
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={async (e) => {
+                                          onClick={(e) => {
                                             e.stopPropagation();
-                                            await generateAgentPdfQuote(
-                                              editingProposal?.id ===
-                                                proposal.id
-                                                ? editingProposal
-                                                : proposal,
-                                              currentAgent,
-                                            );
+                                            const p = editingProposal?.id === proposal.id ? editingProposal : proposal;
+                                            const pdfData = {
+                                              clientName: p.clientName || "Valued Customer",
+                                              charterDate: p.charterDate || "",
+                                              vesselName: p.vesselId1 || "Premium Catamaran",
+                                              price: p.price1 || "Contact Broker",
+                                              notes: p.notes || "Official proposal.",
+                                            };
+                                            const doc = generateAgentPdfQuote(pdfData);
+                                            doc.save(`charter_quote_${(p.clientName || "guest").toLowerCase().replace(/\s+/g, '_')}.pdf`);
                                           }}
                                           className="p-1.5 px-2 flex items-center gap-1.5 text-[9px] font-bold uppercase bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 rounded-xs transition-colors shrink-0 cursor-pointer"
                                           title="Download Quote PDF"
@@ -9593,11 +9612,17 @@ export default function AgentPortalModal({
                         </p>
                       </div>
 
-                      <AdminFleetSettings
-                        hidePhotoEditing={true}
-                        isAdmin={currentAgent?.isAdmin}
-                        agentId={currentAgent?.id || currentAgent?.email}
-                      />
+                      {(() => {
+                        const isUserAdmin = currentAgent?.isAdmin === true || 
+                          ["vinko.mitar@gmail.com", "pypbroker.crm@gmail.com"].includes((currentAgent?.email || "").toLowerCase().trim());
+                        return (
+                          <AdminFleetSettings
+                            hidePhotoEditing={!isUserAdmin}
+                            isAdmin={isUserAdmin}
+                            agentId={currentAgent?.id || currentAgent?.email}
+                          />
+                        );
+                      })()}
                     </div>
                   )}
 

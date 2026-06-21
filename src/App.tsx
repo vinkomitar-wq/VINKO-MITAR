@@ -57,7 +57,7 @@ import {
   User as FirebaseUser,
   signOut,
 } from "firebase/auth";
-import { QrCode, Gauge, Lock } from "lucide-react";
+import { QrCode, Gauge, Lock, Play } from "lucide-react";
 import { CATAMARANS } from "./data";
 import { safeStringify } from "./lib/jsonSafe";
 import VesselCard from "./components/VesselCard";
@@ -83,13 +83,14 @@ import CustomerWorkspace from "./components/CustomerWorkspace";
 import { DigitalBusinessCard } from "./components/DigitalBusinessCard";
 import VesselOperationsPortal from "./components/VesselOperationsPortal";
 import { generateCaptainManifestPdf } from "./lib/pdfGenerator";
+import VesselVideoModal from "./components/VesselVideoModal";
 
 import AgentChatPopup from "./components/AgentChatPopup";
 import ScrollToTop from "./components/ScrollToTop";
 import ShareAppButton from "./components/ShareAppButton";
 import { getPublicUrl } from "./utils/url";
 import { QRCodeSVG } from "qrcode.react";
-import { DESTINATIONS } from "./data";
+import { DESTINATIONS, STANDARD_EXTRAS } from "./data";
 import { VESSEL_BASE_RATES } from "./components/VesselCard";
 
 const CopyLinkButton = ({ link, label }: { link: string; label?: string }) => {
@@ -304,31 +305,32 @@ export default function App() {
       setVesselPortalActiveId(vPortal);
     }
 
-    // Helper to auto-repair image paths containing old /src/assets references
+    // Helper to auto-repair image paths containing old /src/assets references or broken thebest1/thebest2 local assets
     const sanitizeVesselImages = (vesselsList: any[]) => {
       return vesselsList.map((vessel) => {
         const updated = { ...vessel };
-        if (typeof updated.image === "string") {
-          if (updated.image.startsWith("/src/assets/")) {
-            updated.image = updated.image.replace("/src/assets/", "/assets/");
-          } else if (updated.image.includes("/src/assets/")) {
-            updated.image = updated.image.replace(
-              /\/src\/assets\//g,
-              "/assets/",
-            );
+        const mapBrokenPath = (path: string) => {
+          if (typeof path !== "string") return path;
+          let p = path;
+          if (p.startsWith("/src/assets/")) {
+            p = p.replace("/src/assets/", "/assets/");
+          } else if (p.includes("/src/assets/")) {
+            p = p.replace(/\/src\/assets\//g, "/assets/");
           }
+          if (p.includes("thebest1.jpg")) {
+            return "https://images.unsplash.com/photo-1544333323-167812e95a32?auto=format&fit=crop&w=800&q=80";
+          }
+          if (p.includes("thebest2.jpg")) {
+            return "https://images.unsplash.com/photo-1560440021-33f9b867899d?auto=format&fit=crop&w=800&q=80";
+          }
+          return p;
+        };
+
+        if (updated.image) {
+          updated.image = mapBrokenPath(updated.image);
         }
         if (Array.isArray(updated.images)) {
-          updated.images = updated.images.map((img: any) => {
-            if (typeof img === "string") {
-              if (img.startsWith("/src/assets/")) {
-                return img.replace("/src/assets/", "/assets/");
-              } else if (img.includes("/src/assets/")) {
-                return img.replace(/\/src\/assets\//g, "/assets/");
-              }
-            }
-            return img;
-          });
+          updated.images = updated.images.map((img: any) => mapBrokenPath(img));
         }
         return updated;
       });
@@ -352,6 +354,12 @@ export default function App() {
         const parsedRoutes = JSON.parse(storedRoutes);
         DESTINATIONS.length = 0;
         DESTINATIONS.push(...parsedRoutes);
+      }
+      const storedAddons = localStorage.getItem("admin_addons_override");
+      if (storedAddons) {
+        const parsedAddons = JSON.parse(storedAddons);
+        STANDARD_EXTRAS.length = 0;
+        STANDARD_EXTRAS.push(...parsedAddons);
       }
       setFleetVersion((v) => v + 1);
     } catch (e) {
@@ -392,6 +400,19 @@ export default function App() {
             localStorage.setItem(
               "admin_routes_override",
               safeStringify(cloudRoutes),
+            );
+          }
+        }
+
+        const addonsSnap = await getDoc(doc(db, "fleet", "addons"));
+        if (addonsSnap.exists()) {
+          const cloudAddons = addonsSnap.data().list;
+          if (cloudAddons && Array.isArray(cloudAddons)) {
+            STANDARD_EXTRAS.length = 0;
+            STANDARD_EXTRAS.push(...cloudAddons);
+            localStorage.setItem(
+              "admin_addons_override",
+              safeStringify(cloudAddons),
             );
           }
         }
@@ -864,6 +885,8 @@ export default function App() {
   }, [isQuotaExceeded]);
 
   const [selectedVesselId, setSelectedVesselId] = useState<string>("the-best");
+  const [frontPageVideoUrl, setFrontPageVideoUrl] = useState<string | null>(null);
+  const [frontPageVideoTitle, setFrontPageVideoTitle] = useState<string>("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
@@ -2196,6 +2219,112 @@ export default function App() {
                 </div>
               </section>
 
+              {/* Cinematic Tours & Drone Aerial Showcases Section */}
+              <section className="my-16 border border-slate-200/60 rounded-sm bg-[#faf9f6] p-6 sm:p-10 shadow-3xs">
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-4 border-b border-slate-200/80 gap-4">
+                  <div>
+                    <span className="text-[10px] font-sans font-bold uppercase tracking-[0.25em] text-emerald-800">
+                      🎬 Cinematic Yacht Experiences
+                    </span>
+                    <h3 className="text-2xl font-serif italic text-slate-900 mt-1 font-normal">
+                      Video Walkthroughs & Island Diaries
+                    </h3>
+                  </div>
+                  <p className="text-[11px] text-slate-500 max-w-sm font-sans leading-relaxed font-normal">
+                    Take an immersive look at our luxury fleet and the breathtaking tropical destinations awaiting you in southern Thailand.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Card 1 */}
+                  <div 
+                    onClick={() => {
+                      // 🎥 UPDATE FIRST CLIP LINK HERE:
+                      // Supports Google Drive, TikTok, Instagram, Facebook, and YouTube links!
+                      setFrontPageVideoUrl("https://www.youtube.com/watch?v=scg136qDclY");
+                      setFrontPageVideoTitle("Phuket Luxury Yacht & Catamaran Experience");
+                    }}
+                    className="group cursor-pointer rounded-xs overflow-hidden border border-slate-200 bg-white shadow-3xs transition-all duration-300 hover:shadow-md hover:border-slate-400"
+                  >
+                    <div className="relative aspect-video overflow-hidden bg-slate-900">
+                      <img 
+                        src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80"
+                        alt="Cinematic Phuket Catamaran Walkthrough"
+                        className="w-full h-full object-cover select-none transition-transform duration-700 group-hover:scale-105"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+                      
+                      {/* Play Button Icon wrapper */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-14 w-14 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-xl group-hover:bg-rose-500 group-hover:scale-110 transition-all duration-300 border border-white/20">
+                          <Play className="h-6 w-6 fill-white text-white translate-x-0.5" />
+                        </div>
+                      </div>
+
+                      <span className="absolute bottom-4 left-4 rounded-xs bg-[#FAF9F6]/90 border border-[#0F172A]/10 px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-widest text-[#0F172A] font-sans">
+                        Drone Aerial walkthrough
+                      </span>
+                    </div>
+                    <div className="p-5">
+                      <h4 className="font-serif italic text-lg text-slate-900 font-normal">
+                        Phuket Luxury Catamaran Flight & Sea Tour
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-2 font-sans leading-relaxed">
+                        Exquisite aerial drone vistas of our spacious sailing catamarans cruising the Andaman Sea. Feel the sea breeze and observe our onboard sun loungers, nets, and premium decks.
+                      </p>
+                      <div className="mt-4 flex items-center gap-1 text-[10px] font-black uppercase text-rose-600 group-hover:text-rose-700 tracking-wider">
+                        <span>Click to play tour inside app</span>
+                        <span className="text-xs">→</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2 */}
+                  <div 
+                    onClick={() => {
+                      // 🎥 PHI PHI VIDEO LINK (Updated): 
+                      setFrontPageVideoUrl("https://youtu.be/Va90C0J5Oxc?si=dSBZC1T8CyxECfRm");
+                      setFrontPageVideoTitle("Phi Phi & Phang Nga Bay Sailing Diaries");
+                    }}
+                    className="group cursor-pointer rounded-xs overflow-hidden border border-slate-200 bg-white shadow-3xs transition-all duration-300 hover:shadow-md hover:border-slate-400"
+                  >
+                    <div className="relative aspect-video overflow-hidden bg-slate-900">
+                      <img 
+                        src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80"
+                        alt="Andaman Sea Islands Exploration"
+                        className="w-full h-full object-cover select-none transition-transform duration-700 group-hover:scale-105"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+                      
+                      {/* Play Button Icon wrapper */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-14 w-14 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-xl group-hover:bg-rose-500 group-hover:scale-110 transition-all duration-300 border border-white/20">
+                          <Play className="h-6 w-6 fill-white text-white translate-x-0.5" />
+                        </div>
+                      </div>
+
+                      <span className="absolute bottom-4 left-4 rounded-xs bg-[#FAF9F6]/90 border border-[#0F172A]/10 px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-widest text-[#0F172A] font-sans">
+                        Tropical Sailing Diaries
+                      </span>
+                    </div>
+                    <div className="p-5">
+                      <h4 className="font-serif italic text-lg text-slate-900 font-normal">
+                        Andaman Horizon: Phi Phi & Phang Nga Bay
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-2 font-sans leading-relaxed">
+                        Watch an absolute paradise unfold through deep lagoons, vertical limestone cliffs, and remote white sand keys. Perfect previews to map out your private custom charter route with our master captains.
+                      </p>
+                      <div className="mt-4 flex items-center gap-1 text-[10px] font-black uppercase text-rose-600 group-hover:text-rose-700 tracking-wider">
+                        <span>Click to play tour inside app</span>
+                        <span className="text-xs">→</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               {/* Next Navigation Bar */}
               <div className="pt-8 border-t border-slate-200">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -3362,6 +3491,18 @@ export default function App() {
             </button>
           </div>
         </div>
+      )}
+
+      {frontPageVideoUrl && (
+        <VesselVideoModal
+          isOpen={!!frontPageVideoUrl}
+          onClose={() => {
+            setFrontPageVideoUrl(null);
+            setFrontPageVideoTitle("");
+          }}
+          videoUrl={frontPageVideoUrl}
+          vesselName={frontPageVideoTitle}
+        />
       )}
 
       <CustomerPortalModal

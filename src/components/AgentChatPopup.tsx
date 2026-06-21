@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { compressImage } from "../utils/imageCompressor";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
 import { getPublicUrl } from "../utils/url";
@@ -1024,44 +1025,6 @@ Thank you, we look forward to welcoming you on board! ⛵☀️`;
       setIsSending(false);
       e.target.value = "";
     }
-  };
-
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          let width = img.width;
-          let height = img.height;
-          const maxDim = 1000;
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
-            resolve(compressedDataUrl);
-          } else {
-            resolve(e.target?.result as string);
-          }
-        };
-        img.onerror = () => reject(new Error("Failed to load image"));
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = () => reject(new Error("Failed to read file"));
-      reader.readAsDataURL(file);
-    });
   };
 
   const handleCameraUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
